@@ -1,5 +1,5 @@
 import { nicknameSchema, pinSchema } from '@quiz/shared';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Wordmark } from '../components/Wordmark';
 import { api } from '../lib/api';
@@ -16,9 +16,22 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [previous] = useState(playerSession.get);
 
+  // Si se llegó escaneando el QR (/?pin=123456), se valida el PIN solo y se pasa directo al apodo.
+  const autoChecked = useRef(false);
+  useEffect(() => {
+    if (autoChecked.current || !params.get('pin')) return;
+    autoChecked.current = true;
+    void checkPin(params.get('pin')!);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function submitPin(e: React.FormEvent) {
     e.preventDefault();
-    const parsed = pinSchema.safeParse(pin.replace(/\s/g, ''));
+    await checkPin(pin);
+  }
+
+  async function checkPin(raw: string) {
+    const parsed = pinSchema.safeParse(raw.replace(/\s/g, ''));
     if (!parsed.success) return setError(parsed.error.issues[0]!.message);
     setLoading(true);
     setError(null);
@@ -47,7 +60,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col px-4 py-6">
+    <div className="flex min-h-dvh flex-col px-4 pt-6 pb-[calc(1.5rem+var(--badge-space))]">
       <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center">
         <div className="mb-10">
           <Wordmark size="lg" />

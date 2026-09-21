@@ -121,7 +121,7 @@ export default function QuizEditor() {
   const questionHasError = (i: number) => Object.keys(errors).some((k) => k.startsWith(`questions.${i}.`));
 
   return (
-    <div className="min-h-dvh pb-28">
+    <div className="min-h-dvh pb-[calc(7rem+var(--badge-space))]">
       <header className="sticky top-0 z-20 border-b-2 border-ink bg-paper/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
           <Link to="/host" className="btn btn-plain px-3" aria-label="Volver a mis quizzes">
@@ -193,7 +193,7 @@ export default function QuizEditor() {
         </main>
       </div>
 
-      <footer className="fixed inset-x-0 bottom-0 z-20 border-t-2 border-ink bg-paper px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <footer className="fixed inset-x-0 bottom-0 z-20 border-t-2 border-ink bg-paper px-4 pt-3 pb-[calc(max(0.75rem,env(safe-area-inset-bottom))+var(--badge-space))]">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
           <p className="text-sm font-semibold text-bad" role="status">
             {formError}

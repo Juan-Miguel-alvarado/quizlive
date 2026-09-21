@@ -1,4 +1,5 @@
 import type { AckResponse, GameSnapshot } from '@quiz/shared';
+import { QRCodeSVG } from 'qrcode.react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { CenteredMessage } from '../../components/CenteredMessage';
@@ -52,7 +53,7 @@ export default function HostGame() {
 
   return (
     // En pantallas grandes la pregunta ocupa exactamente la altura visible (nada queda bajo el pliegue del proyector).
-    <div className={`flex min-h-dvh flex-col ${inQuestion ? 'lg:h-dvh' : ''}`}>
+    <div className={`flex min-h-dvh flex-col pb-(--badge-space) ${inQuestion ? 'lg:h-dvh' : ''}`}>
       <ConnectionBanner connected={game.connected} />
       <header className="flex items-center gap-3 border-b-2 border-ink px-4 py-2.5 sm:px-6">
         <Wordmark />
@@ -109,7 +110,7 @@ export default function HostGame() {
       {actionError && (
         <div
           role="alert"
-          className="fixed inset-x-4 bottom-4 mx-auto max-w-md rounded-md border-2 border-ink bg-bad p-3 text-center font-semibold text-white shadow-hard"
+          className="fixed inset-x-4 bottom-[calc(1rem+var(--badge-space))] mx-auto max-w-md rounded-md border-2 border-ink bg-bad p-3 text-center font-semibold text-white shadow-hard"
         >
           {actionError}
         </div>
@@ -121,17 +122,36 @@ export default function HostGame() {
 function Lobby({ snap, busy, run }: { snap: GameSnapshot } & Controls) {
   const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
   const connectedCount = snap.players.filter((p) => p.connected).length;
+  // El QR lleva el PIN: al escanearlo se salta el paso de escribirlo.
+  const joinUrl = `${window.location.origin}/?pin=${snap.pin}`;
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 lg:flex-row lg:items-start lg:gap-12">
-      <section className="lg:w-[28rem] lg:shrink-0">
-        <p className="eyebrow">Entra en</p>
-        <p className="text-2xl font-bold break-all sm:text-3xl">{window.location.host}</p>
-        <p className="eyebrow mt-6">con el PIN</p>
-        <p className="font-mono text-6xl font-bold tracking-tight tabular-nums sm:text-7xl xl:text-8xl">
-          {snap.pin.slice(0, 3)}
-          <span className="text-ink-soft/40">·</span>
-          {snap.pin.slice(3)}
-        </p>
+      <section className="lg:w-[34rem] lg:shrink-0">
+        <div className="flex flex-wrap items-end gap-x-8 gap-y-6">
+          <div>
+            <p className="eyebrow">Entra en</p>
+            <p className="text-2xl font-bold break-all sm:text-3xl">{window.location.host}</p>
+            <p className="eyebrow mt-6">con el PIN</p>
+            <p className="font-mono text-6xl font-bold tracking-tight tabular-nums sm:text-7xl xl:text-8xl">
+              {snap.pin.slice(0, 3)}
+              <span className="text-ink-soft/40">·</span>
+              {snap.pin.slice(3)}
+            </p>
+          </div>
+          <figure className="shrink-0">
+            <div className="rounded-md border-2 border-ink bg-white p-2 shadow-hard">
+              <QRCodeSVG
+                value={joinUrl}
+                marginSize={1}
+                fgColor="#17150f"
+                bgColor="#ffffff"
+                title={`Unirse a la partida ${snap.pin}`}
+                className="size-36 sm:size-44 xl:size-56"
+              />
+            </div>
+            <figcaption className="eyebrow mt-2 text-center">o escanea</figcaption>
+          </figure>
+        </div>
         {isLocalhost && (
           <p className="mt-4 rounded-md border-2 border-dashed border-ink/40 p-3 text-sm text-ink-soft">
             Los celulares no pueden abrir <code>localhost</code>. Abre esta pantalla con la IP de tu PC (Vite la muestra
@@ -213,7 +233,7 @@ function QuestionScreen({ game, busy, run }: { game: GameState } & Controls) {
         )}
         <div className={`flex items-center justify-center ${q.imageId ? 'sm:w-64' : 'flex-1'}`}>
           {reveal ? (
-            <div className="flex h-40 items-end gap-2 sm:h-52 xl:h-64" aria-label="Respuestas por opción">
+            <div className="flex h-40 items-end gap-2 sm:h-52 lg:h-full lg:max-h-64" aria-label="Respuestas por opción">
               {reveal.distribution.map((count, i) => {
                 const style = optionStyle(q.type, i);
                 const correct = reveal.correctIndices.includes(i);

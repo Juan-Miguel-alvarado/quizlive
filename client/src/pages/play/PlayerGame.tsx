@@ -38,7 +38,7 @@ export default function PlayerGame() {
   const resultBg = snap.phase === 'reveal' ? resultStyle(snap).bg : '';
 
   return (
-    <div className={`flex min-h-dvh flex-col ${resultBg}`}>
+    <div className={`flex min-h-dvh flex-col pb-(--badge-space) ${resultBg}`}>
       <ConnectionBanner connected={game.connected} />
       <header className="flex items-center justify-between gap-3 border-b-2 border-ink bg-ink px-4 py-2.5 text-paper">
         <span className="truncate font-bold">{snap.me.nickname}</span>

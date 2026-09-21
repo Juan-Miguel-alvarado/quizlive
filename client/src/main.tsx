@@ -8,6 +8,14 @@ import QuizEditor from './pages/host/QuizEditor';
 import QuizList from './pages/host/QuizList';
 import PlayerGame from './pages/play/PlayerGame';
 
+// Detecta la etiqueta "Powered by Netlify" para reservarle espacio (ver --badge-space en index.css).
+const badgeObserver = new MutationObserver(() => {
+  if (!document.getElementById('nl-badge-frame')) return;
+  document.documentElement.setAttribute('data-netlify-badge', '');
+  badgeObserver.disconnect();
+});
+badgeObserver.observe(document.body, { childList: true, subtree: true });
+
 const router = createBrowserRouter([
   { path: '/', element: <Home /> },
   { path: '/host', element: <QuizList /> },

@@ -30,6 +30,15 @@ body,
   min-height: 100dvh;
 }
 
+/* Netlify (plan gratis) pone una etiqueta fija de 194×64 px abajo a la derecha.
+   main.tsx marca <html data-netlify-badge> cuando aparece, y las pantallas dejan ese espacio libre abajo. */
+:root {
+  --badge-space: 0px;
+}
+:root[data-netlify-badge] {
+  --badge-space: 4.5rem;
+}
+
 body {
   @apply bg-paper font-sans text-ink antialiased;
   font-optical-sizing: auto;
