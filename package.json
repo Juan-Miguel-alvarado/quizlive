@@ -1,0 +1,23 @@
+{
+  "name": "quiz-live",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"pnpm --filter server dev\" \"pnpm --filter client dev\"",
+    "db:up": "docker compose up -d",
+    "db:migrate": "pnpm --filter server exec prisma migrate dev",
+    "db:studio": "pnpm --filter server exec prisma studio",
+    "typecheck": "pnpm -r typecheck",
+    "bots": "pnpm --filter server bots",
+    "test:e2e": "pnpm --filter server test:e2e",
+    "tunnel": "cloudflared tunnel --url http://localhost:5173"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5",
+    "typescript": "^7.0.2"
+  },
+  "packageManager": "pnpm@11.0.8",
+  "engines": {
+    "node": ">=22"
+  }
+}

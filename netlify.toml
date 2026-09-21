@@ -1,0 +1,13 @@
+# Netlify publica solo el frontend. El backend (Socket.IO + Postgres) va en Railway/Render.
+[build]
+  command = "pnpm --filter client build"
+  publish = "client/dist"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+# SPA: cualquier ruta (/host, /play…) la resuelve React Router
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

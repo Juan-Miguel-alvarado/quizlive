@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Quiz {
+  id        String     @id @default(cuid())
+  title     String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  questions Question[]
+  games     Game[]
+}
+
+enum QuestionType {
+  single
+  multiple
+  truefalse
+}
+
+model Question {
+  id             String       @id @default(cuid())
+  quizId         String
+  quiz           Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  order          Int
+  type           QuestionType @default(single)
+  text           String
+  imageId        String?
+  image          Image?       @relation(fields: [imageId], references: [id], onDelete: SetNull)
+  options        String[]
+  correctIndices Int[]
+  timeLimitSec   Int
+
+  @@unique([quizId, order])
+}
+
+// Las imágenes viven en Postgres: el cliente las reduce antes de subirlas y así
+// el despliegue no necesita un almacenamiento de archivos aparte.
+model Image {
+  id        String     @id @default(cuid())
+  mime      String
+  data      Bytes
+  createdAt DateTime   @default(now())
+  questions Question[]
+}
+
+// Resultado de una partida terminada. El historial sobrevive aunque se borre el quiz.
+model Game {
+  id         String         @id @default(cuid())
+  quizId     String?
+  quiz       Quiz?          @relation(fields: [quizId], references: [id], onDelete: SetNull)
+  quizTitle  String
+  pin        String
+  startedAt  DateTime
+  finishedAt DateTime
+  players    PlayerResult[]
+}
+
+model PlayerResult {
+  id       String       @id @default(cuid())
+  gameId   String
+  game     Game         @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  nickname String
+  score    Int
+  rank     Int
+  answers  GameAnswer[]
+}
+
+// Guarda una copia del texto de la pregunta: editar el quiz después no altera el historial.
+model GameAnswer {
+  id             String       @id @default(cuid())
+  playerResultId String
+  player         PlayerResult @relation(fields: [playerResultId], references: [id], onDelete: Cascade)
+  questionOrder  Int
+  questionText   String
+  choices        Int[]        // vacío = no respondió
+  correct        Boolean
+  points         Int
+  responseMs     Int?
+}
