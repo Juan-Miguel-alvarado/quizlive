@@ -20,7 +20,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       headers: { 'Content-Type': 'application/json', ...init?.headers },
     });
   } catch {
-    throw new ApiRequestError('No se pudo conectar con el servidor', 0);
+    // En el plan gratis de Render el servidor se duerme; despertarlo tarda cerca de un minuto.
+    throw new ApiRequestError(
+      'No se pudo conectar con el servidor. Si nadie lo usó en un rato, está despertando: prueba de nuevo en un minuto.',
+      0,
+    );
   }
   if (res.status === 204) return undefined as T;
   const body = await res.json().catch(() => ({}));
