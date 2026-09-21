@@ -1,0 +1,25 @@
+# Blueprint de Render: backend (Express + Socket.IO) + Postgres.
+# Render → New → Blueprint → elegir este repo → Apply.
+services:
+  - type: web
+    name: quizlivee-server # → https://quizlivee-server.onrender.com (es la URL que usa netlify.toml)
+    runtime: node
+    plan: free
+    buildCommand: npx --yes pnpm@11.0.8 install --frozen-lockfile
+    startCommand: cd server && npm run start # aplica migraciones y arranca
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: quizlivee-db
+          property: connectionString
+      - key: CLIENT_ORIGIN
+        value: https://quizlivee.netlify.app,http://localhost:5173
+
+databases:
+  - name: quizlivee-db
+    plan: free
+    databaseName: quiz
+    user: quiz
