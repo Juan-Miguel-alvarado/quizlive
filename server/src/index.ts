@@ -21,7 +21,8 @@ app.use(cors({ origin: env.CLIENT_ORIGIN }));
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true });
+  // RENDER_GIT_COMMIT lo pone Render: sirve para saber qué versión está desplegada.
+  res.json({ ok: true, commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? 'local' });
 });
 app.use('/api/quizzes', quizzesRouter);
 app.use('/api/games', gamesRouter(games));

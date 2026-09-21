@@ -49,6 +49,9 @@ export class GameError extends Error {}
 const MAX_PLAYERS = 200;
 const HOST_GRACE_MS = 5 * 60_000;
 const FINISHED_TTL_MS = 10 * 60_000;
+// Con 200 jugadores entrando o respondiendo a la vez, el anfitrión recibe como mucho
+// una actualización de la lista y del contador cada este intervalo (no una por jugador).
+const HOST_UPDATE_MS = 150;
 
 export class Game {
   readonly hostToken = randomUUID();
@@ -62,6 +65,8 @@ export class Game {
   private countdownEndsAt = 0;
   private phaseTimer?: NodeJS.Timeout; // cuenta regresiva o tiempo de la pregunta (nunca ambos)
   private lifecycleTimer?: NodeJS.Timeout;
+  private hostUpdateTimer?: NodeJS.Timeout;
+  private pendingHostUpdates = new Set<'players' | 'progress'>();
   private startedAt: Date | null = null;
   private closed = false;
 
@@ -304,6 +309,7 @@ export class Game {
     this.closed = true;
     clearTimeout(this.phaseTimer);
     this.clearLifecycleTimer();
+    clearTimeout(this.hostUpdateTimer);
     this.io.to(this.room).emit('game:closed', { reason });
     this.io.in(this.room).socketsLeave([this.room, this.hostRoom]);
     this.onClose(this);
@@ -319,7 +325,7 @@ export class Game {
       quizTitle: this.quiz.title,
       totalQuestions: this.quiz.questions.length,
       phase: this.phase,
-      players: this.publicPlayers(),
+      players: player ? [] : this.publicPlayers(), // los celulares no muestran la lista
       countdown: this.phase === 'countdown' ? this.countdownView() : null,
       question: inQuestion ? this.questionView() : null,
       answeredCount: this.answeredCount(),
@@ -421,13 +427,30 @@ export class Game {
 
   // ---------- Utilidades ----------
 
+  /** La lista de jugadores solo la ve el anfitrión (enviarla a todos costaba 200×200 mensajes). */
   private broadcastPlayers() {
-    this.io.to(this.room).emit('lobby:players', { players: this.publicPlayers() });
+    this.queueHostUpdate('players');
   }
 
   private emitProgress() {
-    if (this.phase !== 'question') return;
-    this.io.to(this.hostRoom).emit('question:progress', { answered: this.answeredCount(), total: this.players.size });
+    if (this.phase === 'question') this.queueHostUpdate('progress');
+  }
+
+  private queueHostUpdate(kind: 'players' | 'progress') {
+    this.pendingHostUpdates.add(kind);
+    this.hostUpdateTimer ??= setTimeout(() => this.flushHostUpdates(), HOST_UPDATE_MS);
+  }
+
+  private flushHostUpdates() {
+    this.hostUpdateTimer = undefined;
+    if (this.closed) return;
+    if (this.pendingHostUpdates.has('players')) {
+      this.io.to(this.hostRoom).emit('lobby:players', { players: this.publicPlayers() });
+    }
+    if (this.pendingHostUpdates.has('progress') && this.phase === 'question') {
+      this.io.to(this.hostRoom).emit('question:progress', { answered: this.answeredCount(), total: this.players.size });
+    }
+    this.pendingHostUpdates.clear();
   }
 
   /**

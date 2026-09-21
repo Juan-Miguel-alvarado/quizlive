@@ -33,6 +33,7 @@ pnpm dev          # servidor :3001 + cliente :5173
 ```bash
 pnpm bots <PIN> [cantidad]   # llena una partida con bots que responden al azar
 pnpm test:e2e                # partida completa simulada por sockets (con pnpm dev corriendo)
+pnpm --filter server test:load 200   # carga: 200 jugadores (SERVER_URL=… para producción)
 pnpm typecheck
 ```
 
