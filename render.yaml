@@ -16,6 +16,11 @@ services:
         fromDatabase:
           name: quizlivee-db
           property: connectionString
+      # La clave de anfitrión se escribe en el panel de Render (no vive en el repo).
+      - key: HOST_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
       - key: CLIENT_ORIGIN
         value: https://quizlivee.netlify.app,http://localhost:5173
 

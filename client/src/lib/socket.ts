@@ -36,6 +36,7 @@ export const gameActions = {
   hostStart: () => call((s) => s.timeout(ACK_TIMEOUT_MS).emitWithAck('host:start')),
   hostNext: () => call((s) => s.timeout(ACK_TIMEOUT_MS).emitWithAck('host:next')),
   hostEnd: () => call((s) => s.timeout(ACK_TIMEOUT_MS).emitWithAck('host:end')),
+  hostPlayAgain: () => call((s) => s.timeout(ACK_TIMEOUT_MS).emitWithAck('host:playAgain')),
   hostKick: (playerId: string) => call((s) => s.timeout(ACK_TIMEOUT_MS).emitWithAck('host:kick', { playerId })),
   playerJoin: (p: PlayerJoinPayload) => call((s) => s.timeout(ACK_TIMEOUT_MS).emitWithAck('player:join', p)),
   playerRejoin: (p: PlayerRejoinPayload) => call((s) => s.timeout(ACK_TIMEOUT_MS).emitWithAck('player:rejoin', p)),

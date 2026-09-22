@@ -1,6 +1,6 @@
 import type { AckResponse, GameSnapshot } from '@quiz/shared';
 import { QRCodeSVG } from 'qrcode.react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { CenteredMessage } from '../../components/CenteredMessage';
 import { ConnectionBanner } from '../../components/ConnectionBanner';
@@ -12,6 +12,7 @@ import { Podium } from '../../components/Podium';
 import { Wordmark } from '../../components/Wordmark';
 import { imageUrl } from '../../lib/images';
 import { hostTokens } from '../../lib/session';
+import { sound } from '../../lib/sound';
 import { gameActions } from '../../lib/socket';
 import { useGame, type GameState } from '../../lib/useGame';
 
@@ -25,6 +26,9 @@ export default function HostGame() {
   );
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [muted, setMuted] = useState(sound.muted);
+  const phase = game.snap?.phase;
+  const runRef = useRef<(action: () => Promise<AckResponse>) => void>(() => {});
 
   async function run(action: () => Promise<AckResponse>) {
     setBusy(true);
@@ -33,6 +37,29 @@ export default function HostGame() {
     if (!res.ok) setActionError(res.error);
     setBusy(false);
   }
+  runRef.current = run;
+
+  // Sonido por fase: esta pantalla es la que se proyecta, los celulares solo vibran.
+  useEffect(() => {
+    if (phase === 'countdown') sound.countdown();
+    else if (phase === 'question') sound.questionStart();
+    else if (phase === 'reveal') sound.correct();
+    else if (phase === 'podium') sound.fanfare();
+  }, [phase]);
+
+  // Barra espaciadora o Enter para avanzar, sin tener que apuntar al botón.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(el.tagName)) return;
+      if (e.code !== 'Space' && e.code !== 'Enter') return;
+      e.preventDefault();
+      sound.unlock();
+      runRef.current(gameActions.hostNext);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   if (game.closedReason) {
     return (
@@ -53,7 +80,10 @@ export default function HostGame() {
 
   return (
     // En pantallas grandes la pregunta ocupa exactamente la altura visible (nada queda bajo el pliegue del proyector).
-    <div className={`flex min-h-dvh flex-col pb-(--badge-space) ${inQuestion ? 'lg:h-dvh' : ''}`}>
+    <div
+      onPointerDown={() => sound.unlock()}
+      className={`flex min-h-dvh flex-col pb-(--badge-space) ${inQuestion ? 'lg:h-dvh' : ''}`}
+    >
       <ConnectionBanner connected={game.connected} />
       <header className="flex items-center gap-3 border-b-2 border-ink px-4 py-2.5 sm:px-6">
         <Wordmark />
@@ -65,6 +95,14 @@ export default function HostGame() {
             </span>
           )}
           {snap.phase !== 'lobby' && <span className="hidden text-ink-soft sm:inline">PIN {snap.pin}</span>}
+          <button
+            onClick={() => setMuted(sound.toggleMuted())}
+            aria-pressed={muted}
+            title={muted ? 'Activar sonido' : 'Silenciar'}
+            className="btn btn-plain px-2 py-1 font-sans text-sm"
+          >
+            {muted ? '🔇' : '🔊'}
+          </button>
           {snap.phase !== 'podium' && (
             <button
               disabled={busy}
@@ -97,9 +135,18 @@ export default function HostGame() {
           <PhaseLayout
             title="Resultado final"
             action={
-              <Link to="/host" className="btn btn-primary btn-lg">
-                Volver a tus quizzes
-              </Link>
+              <div className="flex flex-wrap justify-center gap-3">
+                <button
+                  disabled={busy}
+                  onClick={() => run(gameActions.hostPlayAgain)}
+                  className="btn btn-accent btn-lg"
+                >
+                  Jugar otra vez ↻
+                </button>
+                <Link to="/host" className="btn btn-primary btn-lg">
+                  Volver a tus quizzes
+                </Link>
+              </div>
             }
           >
             <Podium top={snap.podium ?? []} />

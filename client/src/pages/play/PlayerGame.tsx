@@ -1,5 +1,5 @@
 import type { GameSnapshot } from '@quiz/shared';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router';
 import { CenteredMessage } from '../../components/CenteredMessage';
 import { ConnectionBanner } from '../../components/ConnectionBanner';
@@ -9,6 +9,7 @@ import { OptionShape, optionStyle } from '../../components/OptionShape';
 import { imageUrl } from '../../lib/images';
 import { playerSession } from '../../lib/session';
 import { gameActions } from '../../lib/socket';
+import { buzz } from '../../lib/sound';
 import { useGame } from '../../lib/useGame';
 
 type Game = ReturnType<typeof useGame>;
@@ -20,6 +21,14 @@ export default function PlayerGame() {
       ? gameActions.playerRejoin({ pin: session.pin, playerToken: session.playerToken })
       : { ok: false, error: 'Sin sesión' },
   );
+
+  const snap = game.snap;
+  const result = snap?.phase === 'reveal' ? snap.me?.lastResult : null;
+  // El celular vibra en vez de sonar: 30 teléfonos pitando en un salón es un caos.
+  useEffect(() => {
+    if (!result) return;
+    buzz(result.correct ? [40, 60, 40] : 220);
+  }, [result]);
 
   if (!session) return <Navigate to="/" replace />;
 
@@ -33,7 +42,6 @@ export default function PlayerGame() {
     );
   }
 
-  const snap = game.snap;
   if (!snap?.me) return <CenteredMessage title="Conectando…" />;
   const resultBg = snap.phase === 'reveal' ? resultStyle(snap).bg : '';
 
@@ -98,6 +106,7 @@ function AnswerScreen({ game }: { game: Game }) {
   async function send(choices: number[]) {
     if (sent !== null || choices.length === 0) return;
     setError(null);
+    buzz(25);
     game.markAnswered(choices); // optimista: el servidor igual valida
     const res = await gameActions.playerAnswer({ questionIndex: q.index, choices });
     if (!res.ok) {
@@ -110,6 +119,17 @@ function AnswerScreen({ game }: { game: Game }) {
     if (!multiple) return send([i]);
     setSelected((cur) => (cur.includes(i) ? cur.filter((c) => c !== i) : [...cur, i]));
   }
+
+  // Teclas 1-4 para quien juegue desde la laptop; Enter envía en selección múltiple.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const index = Number(e.key) - 1;
+      if (Number.isInteger(index) && index >= 0 && index < q.options.length) tap(index);
+      else if (e.key === 'Enter' && multiple) send(selected);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   if (sent !== null) {
     return (
@@ -202,6 +222,12 @@ function ResultScreen({ snap }: { snap: GameSnapshot }) {
     <Centered>
       <p className="animate-[pop_300ms_both] text-5xl font-extrabold tracking-tight">{title}</p>
       {r?.correct && <p className="mt-2 text-5xl font-extrabold tabular-nums">+{r.points}</p>}
+      {r && r.streak >= 2 && (
+        <p className="mt-3 rounded-full border-2 border-ink bg-accent px-4 py-1 font-bold text-ink">
+          Racha x{r.streak}
+          {r.streakBonus > 0 && ` · +${r.streakBonus} extra`}
+        </p>
+      )}
       {r && (
         <p className="mt-10 rounded-md border-2 border-ink bg-white px-4 py-2 text-ink">
           Puesto <span className="font-mono font-bold">{r.rank}</span> ·{' '}

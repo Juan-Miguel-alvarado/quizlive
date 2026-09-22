@@ -9,7 +9,11 @@ import {
 import type { z } from 'zod';
 import { GameError, type Game } from '../game/Game';
 import type { GameManager } from '../game/GameManager';
+import { createRateLimiter } from '../lib/rateLimit';
 import type { TypedServer, TypedSocket } from './types';
+
+// El PIN son 6 dígitos: sin límite, alguien podría probarlos todos para colarse en partidas ajenas.
+const takeJoinAttempt = createRateLimiter({ limit: 30, windowMs: 5 * 60_000 });
 
 type AnyAck = (res: AckResponse<object>) => void;
 
@@ -35,6 +39,8 @@ function parse<S extends z.ZodType>(schema: S, payload: unknown): z.infer<S> {
 
 export function registerSocketHandlers(io: TypedServer, games: GameManager) {
   io.on('connection', (socket: TypedSocket) => {
+    const clientIp = socket.handshake.headers['x-forwarded-for']?.toString().split(',')[0]?.trim()
+      ?? socket.handshake.address;
     /** Suelta la partida a la que estuviera asociado este socket (al cambiar de partida o desconectarse). */
     const leaveCurrentGame = () => {
       const { pin, role, playerId } = socket.data;
@@ -52,7 +58,10 @@ export function registerSocketHandlers(io: TypedServer, games: GameManager) {
 
     const findGame = (pin: string) => {
       const game = games.get(pin);
-      if (!game) throw new GameError('No existe una partida con ese PIN');
+      if (!game) {
+        if (!takeJoinAttempt(clientIp)) throw new GameError('Demasiados intentos, espera unos minutos');
+        throw new GameError('No existe una partida con ese PIN');
+      }
       return game;
     };
 
@@ -85,6 +94,7 @@ export function registerSocketHandlers(io: TypedServer, games: GameManager) {
     socket.on('host:start', (ack) => respond(ack, () => hostGame().start()));
     socket.on('host:next', (ack) => respond(ack, () => hostGame().next()));
     socket.on('host:end', (ack) => respond(ack, () => hostGame().end()));
+    socket.on('host:playAgain', (ack) => respond(ack, () => hostGame().playAgain()));
     socket.on('host:kick', (payload, ack) =>
       respond(ack, () => hostGame().kick(parse(hostKickSchema, payload).playerId)),
     );

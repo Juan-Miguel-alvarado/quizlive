@@ -5,6 +5,10 @@ import { Server } from 'socket.io';
 import { env } from './env';
 import { prisma } from './lib/prisma';
 import { GameManager } from './game/GameManager';
+import { requireHost } from './lib/auth';
+import { rateLimit } from './lib/rateLimit';
+import { authRouter } from './routes/auth';
+import { historyRouter } from './routes/history';
 import { gamesRouter } from './routes/games';
 import { imagesRouter } from './routes/images';
 import { quizzesRouter } from './routes/quizzes';
@@ -12,6 +16,7 @@ import { registerSocketHandlers } from './socket/handlers';
 import type { TypedServer } from './socket/types';
 
 const app = express();
+app.set('trust proxy', 1); // Render/Netlify van detrás de un proxy: así req.ip es la IP real
 const httpServer = createServer(app);
 const io: TypedServer = new Server(httpServer, { cors: { origin: env.CLIENT_ORIGIN } });
 const games = new GameManager(io);
@@ -24,9 +29,18 @@ app.get('/api/health', (_req, res) => {
   // RENDER_GIT_COMMIT lo pone Render: sirve para saber qué versión está desplegada.
   res.json({ ok: true, commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? 'local' });
 });
-app.use('/api/quizzes', quizzesRouter);
-app.use('/api/games', gamesRouter(games));
+const writeLimiter = rateLimit({
+  limit: 120,
+  windowMs: 60 * 60_000,
+  message: 'Demasiadas peticiones seguidas, espera un momento',
+});
+
+app.use('/api/auth', authRouter);
+// Todo lo del anfitrión va con clave; lo público es unirse a una partida y ver las imágenes.
+app.use('/api/quizzes', requireHost, writeLimiter, quizzesRouter);
+app.use('/api/history', requireHost, historyRouter);
 app.use('/api/images', imagesRouter);
+app.use('/api/games', gamesRouter(games));
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Ruta no encontrada' });

@@ -14,6 +14,18 @@ const FINISH = process.argv.includes('--finish');
 const QUESTIONS = 3;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Las rutas del anfitrión piden clave. */
+async function hostHeaders() {
+  const res = await fetch(`${URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ password: process.env.HOST_PASSWORD ?? 'anfitrion' }),
+  });
+  if (!res.ok) throw new Error(`No se pudo iniciar sesión como anfitrión (${res.status})`);
+  const { token } = (await res.json()) as { token: string };
+  return { 'content-type': 'application/json', authorization: `Bearer ${token}` };
+}
 const stats = (xs: number[]) => {
   const s = [...xs].sort((a, b) => a - b);
   const q = (p: number) => s[Math.min(s.length - 1, Math.floor(p * s.length))] ?? NaN;
@@ -42,13 +54,14 @@ const allReceive = (sockets: ClientSocket[], event: keyof ServerToClientEvents, 
 
 async function main() {
   console.log(`Servidor: ${URL} · ${N} jugadores\n`);
+  const auth = await hostHeaders();
   const t0 = Date.now();
   await fetch(`${URL}/api/health`); // despierta Render si estaba dormido
   console.log(`servidor responde en ${Date.now() - t0} ms`);
 
   const quiz = await fetch(`${URL}/api/quizzes`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: auth,
     body: JSON.stringify({
       title: `Carga ${N}`,
       questions: Array.from({ length: QUESTIONS }, (_, i) => ({
@@ -64,7 +77,7 @@ async function main() {
   try {
     const { pin, hostToken } = await fetch(`${URL}/api/games`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: auth,
       body: JSON.stringify({ quizId: quiz.id }),
     }).then((r) => r.json());
     const host = await connect();
@@ -144,7 +157,7 @@ async function main() {
     }
     for (const s of everyone) s.disconnect();
   } finally {
-    await fetch(`${URL}/api/quizzes/${quiz.id}`, { method: 'DELETE' });
+    await fetch(`${URL}/api/quizzes/${quiz.id}`, { method: 'DELETE', headers: auth });
   }
   process.exit(0);
 }

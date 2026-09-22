@@ -10,7 +10,8 @@
     "typecheck": "pnpm -r typecheck",
     "bots": "pnpm --filter server bots",
     "test:e2e": "pnpm --filter server test:e2e",
-    "tunnel": "cloudflared tunnel --url http://localhost:5173"
+    "tunnel": "cloudflared tunnel --url http://localhost:5173",
+    "test": "pnpm --filter server test"
   },
   "devDependencies": {
     "concurrently": "^10.0.5",

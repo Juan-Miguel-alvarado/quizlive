@@ -29,6 +29,12 @@ export const playerSession = {
   clear: () => write('quizlive:player', null),
 };
 
+export const hostSession = {
+  get: () => read<string>('quizlive:session'),
+  set: (token: string) => write('quizlive:session', token),
+  clear: () => write('quizlive:session', null),
+};
+
 export const hostTokens = {
   get: (pin: string) => read<string>(`quizlive:host:${pin}`),
   set: (pin: string, token: string) => write(`quizlive:host:${pin}`, token),

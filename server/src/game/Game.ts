@@ -12,7 +12,7 @@ import type {
 import { QUESTION_COUNTDOWN_SEC, type QuestionType } from '@quiz/shared';
 import { prisma } from '../lib/prisma';
 import type { TypedServer, TypedSocket } from '../socket/types';
-import { computePoints, rankPlayers } from './scoring';
+import { computePoints, rankPlayers, streakBonus } from './scoring';
 
 export interface GameQuiz {
   id: string;
@@ -30,7 +30,9 @@ export interface GameQuiz {
 interface AnswerRecord {
   choices: number[]; // vacío = no respondió
   correct: boolean;
-  points: number;
+  points: number; // incluye el bonus por racha
+  bonus: number;
+  streak: number;
   responseMs: number | null;
 }
 
@@ -40,6 +42,7 @@ interface Player {
   nickname: string;
   score: number;
   socketId: string | null;
+  streak: number; // aciertos seguidos
   answers: (AnswerRecord | undefined)[]; // indexado por número de pregunta
 }
 
@@ -66,6 +69,7 @@ export class Game {
   private phaseTimer?: NodeJS.Timeout; // cuenta regresiva o tiempo de la pregunta (nunca ambos)
   private lifecycleTimer?: NodeJS.Timeout;
   private hostUpdateTimer?: NodeJS.Timeout;
+  private previousRanks = new Map<string, number>(); // para las flechas de la clasificación
   private pendingHostUpdates = new Set<'players' | 'progress'>();
   private startedAt: Date | null = null;
   private closed = false;
@@ -163,6 +167,26 @@ export class Game {
     this.finish();
   }
 
+  /** Reinicia la partida conservando a los jugadores conectados (botón «Jugar otra vez»). */
+  playAgain() {
+    if (this.phase !== 'podium') throw new GameError('La partida todavía no terminó');
+    clearTimeout(this.phaseTimer);
+    this.phase = 'lobby';
+    this.index = -1;
+    this.startedAt = null;
+    this.previousRanks.clear();
+    for (const p of this.players.values()) {
+      p.score = 0;
+      p.streak = 0;
+      p.answers = [];
+    }
+    this.armLifecycleTimer(HOST_GRACE_MS, 'La partida se quedó sin anfitrión');
+    for (const p of this.players.values()) {
+      if (p.socketId) this.io.to(p.socketId).emit('game:state', this.snapshot(p));
+    }
+    if (this.hostSocketId) this.io.to(this.hostSocketId).emit('game:state', this.snapshot(null));
+  }
+
   kick(playerId: string) {
     const player = this.players.get(playerId);
     if (!player) throw new GameError('Ese jugador ya no está en la partida');
@@ -192,6 +216,7 @@ export class Game {
       nickname,
       score: 0,
       socketId: null,
+      streak: 0,
       answers: [],
     };
     this.players.set(player.id, player);
@@ -238,6 +263,8 @@ export class Game {
       choices: [...choices].sort((a, b) => a - b),
       correct,
       points: computePoints(correct, responseMs, q.timeLimitSec * 1000),
+      bonus: 0, // el bonus por racha se calcula al cerrar la pregunta
+      streak: 0,
       responseMs,
     };
     this.emitProgress();
@@ -273,8 +300,20 @@ export class Game {
     if (this.phase !== 'question') return;
     clearTimeout(this.phaseTimer);
     this.phase = 'reveal';
+    this.previousRanks = this.ranks();
     for (const p of this.players.values()) {
-      const a = (p.answers[this.index] ??= { choices: [], correct: false, points: 0, responseMs: null });
+      const a = (p.answers[this.index] ??= {
+        choices: [],
+        correct: false,
+        points: 0,
+        bonus: 0,
+        streak: 0,
+        responseMs: null,
+      });
+      p.streak = a.correct ? p.streak + 1 : 0;
+      a.streak = p.streak;
+      a.bonus = a.correct ? streakBonus(p.streak) : 0;
+      a.points += a.bonus;
       p.score += a.points;
     }
     this.io.to(this.room).emit('question:reveal', this.revealView()!);
@@ -387,6 +426,8 @@ export class Game {
       answered: (a?.choices.length ?? 0) > 0,
       correct: a?.correct ?? false,
       points: a?.points ?? 0,
+      streak: a?.streak ?? 0,
+      streakBonus: a?.bonus ?? 0,
       totalScore: p.score,
       rank: ranks.get(p.id) ?? 0,
     };
@@ -399,12 +440,17 @@ export class Game {
   private top(n: number, ranks = this.ranks()): ScoreEntry[] {
     return rankPlayers([...this.players.values()])
       .slice(0, n)
-      .map(({ player }) => ({
-        playerId: player.id,
-        nickname: player.nickname,
-        score: player.score,
-        rank: ranks.get(player.id) ?? 0,
-      }));
+      .map(({ player }) => {
+        const rank = ranks.get(player.id) ?? 0;
+        const before = this.previousRanks.get(player.id);
+        return {
+          playerId: player.id,
+          nickname: player.nickname,
+          score: player.score,
+          rank,
+          delta: before === undefined ? 0 : before - rank,
+        };
+      });
   }
 
   private publicPlayers(): PlayerPublic[] {

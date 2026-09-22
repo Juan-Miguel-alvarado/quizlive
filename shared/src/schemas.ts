@@ -59,6 +59,7 @@ export const nicknameSchema = z
   .pipe(z.string().min(1, 'Escribe un apodo').max(20, 'Máximo 20 caracteres'));
 
 export const createGameSchema = z.object({ quizId: z.string().min(1) });
+export const hostLoginSchema = z.object({ password: z.string().min(1).max(200) });
 export const hostJoinSchema = z.object({ pin: pinSchema, hostToken: z.string().min(1).max(100) });
 export const hostKickSchema = z.object({ playerId: z.string().min(1).max(100) });
 export const playerJoinSchema = z.object({ pin: pinSchema, nickname: nicknameSchema });

@@ -31,6 +31,8 @@ export interface ScoreEntry {
   nickname: string;
   score: number;
   rank: number;
+  /** Puestos que subió (positivo) o bajó (negativo) desde la pregunta anterior. */
+  delta: number;
 }
 
 /** Pregunta tal como la ven los clientes: nunca incluye la respuesta correcta. */
@@ -56,6 +58,8 @@ export interface AnswerResult {
   answered: boolean;
   correct: boolean;
   points: number;
+  streak: number; // aciertos seguidos
+  streakBonus: number; // parte de `points` que vino por la racha
   totalScore: number;
   rank: number;
 }
@@ -93,6 +97,7 @@ export interface ClientToServerEvents {
   'host:start': (ack: Ack) => void;
   'host:next': (ack: Ack) => void;
   'host:kick': (p: HostKickPayload, ack: Ack) => void;
+  'host:playAgain': (ack: Ack) => void; // reinicia la misma partida con los mismos jugadores
   'host:end': (ack: Ack) => void;
   'player:join': (
     p: PlayerJoinPayload,

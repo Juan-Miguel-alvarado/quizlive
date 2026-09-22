@@ -1,5 +1,6 @@
 import type { UploadImageResponse } from '@quiz/shared';
 import { ApiRequestError, SERVER_URL } from './api';
+import { hostSession } from './session';
 
 const MAX_SIDE = 1600;
 const MAX_GIF_BYTES = 3 * 1024 * 1024;
@@ -36,7 +37,10 @@ export async function uploadImage(file: File): Promise<string> {
   try {
     res = await fetch(`${SERVER_URL}/api/images`, {
       method: 'POST',
-      headers: { 'Content-Type': blob.type || 'application/octet-stream' },
+      headers: {
+        'Content-Type': blob.type || 'application/octet-stream',
+        ...(hostSession.get() ? { Authorization: `Bearer ${hostSession.get()}` } : {}),
+      },
       body: blob,
     });
   } catch {

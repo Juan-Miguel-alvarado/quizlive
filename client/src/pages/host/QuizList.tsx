@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Wordmark } from '../../components/Wordmark';
 import { api } from '../../lib/api';
-import { hostTokens } from '../../lib/session';
+import { hostSession, hostTokens } from '../../lib/session';
 
 const dateFormat = new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short' });
 
@@ -43,9 +43,23 @@ export default function QuizList() {
     <div className="mx-auto max-w-5xl px-4 py-6 sm:py-10">
       <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
         <Wordmark />
-        <Link to="/host/quizzes/new" className="btn btn-accent">
-          + Nuevo quiz
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/host/history" className="btn btn-plain">
+            Partidas jugadas
+          </Link>
+          <button
+            onClick={() => {
+              hostSession.clear();
+              location.reload();
+            }}
+            className="btn btn-plain"
+          >
+            Salir
+          </button>
+          <Link to="/host/quizzes/new" className="btn btn-accent">
+            + Nuevo quiz
+          </Link>
+        </div>
       </header>
 
       <div className="mb-4 flex items-baseline justify-between border-b-2 border-ink pb-2">

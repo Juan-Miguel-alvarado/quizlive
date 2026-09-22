@@ -12,6 +12,10 @@ const envSchema = z.object({
     .string()
     .default('http://localhost:5173')
     .transform((s) => s.split(',').map((o) => o.trim()).filter(Boolean)),
+  // Clave para entrar como anfitrión (crear quizzes, lanzar partidas, ver el historial).
+  HOST_PASSWORD: z.string().min(4).default('anfitrion'),
+  // Firma los tokens de sesión. Si falta, se usa uno al azar y las sesiones caducan al reiniciar.
+  SESSION_SECRET: z.string().min(16).optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -21,3 +25,7 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+if (env.HOST_PASSWORD === 'anfitrion') {
+  console.warn('⚠  HOST_PASSWORD no está configurada: se usa la clave por defecto «anfitrion».');
+}

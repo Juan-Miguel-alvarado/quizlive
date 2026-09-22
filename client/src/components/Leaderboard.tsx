@@ -13,6 +13,15 @@ export function Leaderboard({ entries }: { entries: ScoreEntry[] }) {
         >
           <span className="w-8 text-xl font-extrabold tabular-nums sm:text-3xl">{e.rank}</span>
           <span className="min-w-0 flex-1 truncate text-xl font-bold sm:text-2xl xl:text-3xl">{e.nickname}</span>
+          {e.delta !== 0 && (
+            <span
+              className={`font-mono text-sm font-bold sm:text-base ${e.delta > 0 ? 'text-good' : 'text-bad'}`}
+              title={e.delta > 0 ? `Subió ${e.delta}` : `Bajó ${-e.delta}`}
+            >
+              {e.delta > 0 ? '▲' : '▼'}
+              {Math.abs(e.delta)}
+            </span>
+          )}
           <span className="text-xl font-extrabold tabular-nums sm:text-2xl xl:text-3xl">
             {e.score.toLocaleString('es')}
           </span>

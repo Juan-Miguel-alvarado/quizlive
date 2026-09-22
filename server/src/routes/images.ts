@@ -1,4 +1,6 @@
 import express, { Router } from 'express';
+import { requireHost } from '../lib/auth';
+import { rateLimit } from '../lib/rateLimit';
 import { prisma } from '../lib/prisma';
 import type { UploadImageResponse } from '@quiz/shared';
 

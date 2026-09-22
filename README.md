@@ -18,7 +18,7 @@ pnpm dev          # servidor :3001 + cliente :5173
 
 | Qué | Dónde |
 |---|---|
-| Anfitrión (crear quizzes, iniciar partida) | http://localhost:5173/host |
+| Anfitrión (crear quizzes, iniciar partida) | http://localhost:5173/host (clave: `HOST_PASSWORD`) |
 | Jugadores | http://<IP-de-tu-PC>:5173 (misma Wi-Fi) |
 | Base de datos | `pnpm db:studio` |
 
@@ -31,6 +31,7 @@ pnpm dev          # servidor :3001 + cliente :5173
 ## Herramientas de prueba
 
 ```bash
+pnpm test                    # tests unitarios (puntaje, máquina de estados, sesión, CSV)
 pnpm bots <PIN> [cantidad]   # llena una partida con bots que responden al azar
 pnpm test:e2e                # partida completa simulada por sockets (con pnpm dev corriendo)
 pnpm --filter server test:load 200   # carga: 200 jugadores (SERVER_URL=… para producción)
@@ -48,6 +49,18 @@ pnpm typecheck
 Cada pregunta puede llevar una imagen. El navegador la reduce (a lo sumo 1600 px, WebP) antes de
 subirla y se guarda en Postgres (`Image`), así el despliegue no necesita almacenamiento aparte.
 Las imágenes que ya no usa ninguna pregunta se borran solas después de un día.
+
+## Qué más trae
+
+- **Clave de anfitrión** (`HOST_PASSWORD`): sin ella no se ven ni se tocan los quizzes. Jugar no pide nada.
+- **Historial e informe** por partida: aciertos por pregunta, tiempo medio y tabla por jugador. Con un botón
+  se crea un quiz de repaso con las preguntas que el grupo falló (menos del 60 % de aciertos).
+- **Bonus por racha**: +100 puntos por cada acierto seguido, hasta +500.
+- **Flechas** en la clasificación con lo que subió o bajó cada quien.
+- **Sonido en la pantalla del anfitrión y vibración en los celulares** (30 teléfonos sonando sería un caos).
+- **Teclado**: 1-4 para responder, Enter para enviar en selección múltiple, espacio para avanzar como anfitrión.
+- **Importar CSV** en el editor y **jugar otra vez** con los mismos jugadores desde el podio.
+- **Límites por IP** contra fuerza bruta de PIN, spam de imágenes e intentos de clave.
 
 ## Cómo funciona
 
@@ -75,6 +88,8 @@ backend necesita un proceso siempre encendido (Socket.IO) y Postgres.
 - Variables:
   - `DATABASE_URL`: la de ese Postgres.
   - `CLIENT_ORIGIN`: la URL de Netlify (se aceptan varias separadas por coma).
+  - `HOST_PASSWORD`: la clave para entrar a `/host`. Render la pide al aplicar el blueprint.
+  - `SESSION_SECRET`: la genera Render sola.
   - `PORT`: la pone el proveedor.
 - Comando de arranque: `pnpm start`. Aplica las migraciones y levanta el servidor.
 

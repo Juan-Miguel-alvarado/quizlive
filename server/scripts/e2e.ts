@@ -30,10 +30,23 @@ const emit = (s: ClientSocket, event: string, ...args: unknown[]) =>
   new Promise<any>((resolve) => (s as Socket).emit(event, ...args, resolve));
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function main() {
-  const quiz = await fetch(`${URL}/api/quizzes`, {
+/** Las rutas del anfitrión piden clave. */
+async function hostHeaders() {
+  const res = await fetch(`${URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ password: process.env.HOST_PASSWORD ?? 'anfitrion' }),
+  });
+  if (!res.ok) throw new Error(`No se pudo iniciar sesión como anfitrión (${res.status})`);
+  const { token } = (await res.json()) as { token: string };
+  return { 'content-type': 'application/json', authorization: `Bearer ${token}` };
+}
+
+async function main() {
+  const auth = await hostHeaders();
+  const quiz = await fetch(`${URL}/api/quizzes`, {
+    method: 'POST',
+    headers: auth,
     body: JSON.stringify({
       title: 'E2E',
       questions: [
@@ -45,7 +58,7 @@ async function main() {
   }).then((r) => r.json());
   const bad = await fetch(`${URL}/api/quizzes`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: auth,
     body: JSON.stringify({
       title: 'Malo',
       questions: [{ type: 'single', text: 'x', options: ['a', 'b'], correctIndices: [0, 1], timeLimitSec: 5 }],
@@ -54,14 +67,14 @@ async function main() {
   check(bad.status === 400, 'opción única con dos correctas rechazada al guardar');
   const { pin, hostToken } = await fetch(`${URL}/api/games`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: auth,
     body: JSON.stringify({ quizId: quiz.id }),
   }).then((r) => r.json());
   check(/^\d{6}$/.test(pin), `PIN creado: ${pin}`);
   try {
     await playGame(pin, hostToken);
   } finally {
-    await fetch(`${URL}/api/quizzes/${quiz.id}`, { method: 'DELETE' });
+    await fetch(`${URL}/api/quizzes/${quiz.id}`, { method: 'DELETE', headers: auth });
   }
   console.log(failures ? `\n${failures} verificaciones fallaron` : '\nTodo OK');
   process.exit(failures ? 1 : 0);

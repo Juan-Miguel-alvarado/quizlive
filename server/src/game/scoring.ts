@@ -1,4 +1,11 @@
 export const MAX_POINTS = 1000;
+export const STREAK_BONUS = 100; // por cada acierto seguido a partir del segundo
+export const MAX_STREAK_BONUS = 500;
+
+/** Bonus por aciertos seguidos: 2 seguidos = +100, 3 = +200… hasta +500. */
+export function streakBonus(streak: number): number {
+  return Math.min(MAX_STREAK_BONUS, Math.max(0, streak - 1) * STREAK_BONUS);
+}
 
 /** Acierto inmediato = 1000 pts; acierto en el último instante = 500 pts; error = 0. */
 export function computePoints(correct: boolean, responseMs: number, timeLimitMs: number): number {

@@ -1,7 +1,9 @@
 import {
+  CSV_TEMPLATE,
   MAX_OPTIONS,
   MIN_OPTIONS,
   QUESTION_TYPES,
+  parseQuizCsv,
   quizInputSchema,
   TIME_LIMITS,
   TRUE_FALSE_OPTIONS,
@@ -181,6 +183,13 @@ export default function QuizEditor() {
               />
             ))}
           </ol>
+
+          <ImportCsv
+            onImport={(imported) => {
+              setQuestions([...questions, ...imported.map((q) => ({ ...q, key: newKey() }))]);
+              setErrors({});
+            }}
+          />
 
           <button
             onClick={() => setQuestions([...questions, emptyQuestion()])}
@@ -444,6 +453,42 @@ function ImagePicker({ imageId, onChange }: { imageId: string | null; onChange: 
         </button>
       )}
       <FieldError message={error ?? undefined} />
+    </div>
+  );
+}
+
+function ImportCsv({ onImport }: { onImport: (questions: QuestionInput[]) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [help, setHelp] = useState(false);
+
+  async function handleFile(file: File | undefined) {
+    if (!file) return;
+    const { questions, errors } = parseQuizCsv(await file.text());
+    setError(errors.length ? errors.slice(0, 3).join(' · ') : null);
+    if (questions.length) onImport(questions);
+    if (inputRef.current) inputRef.current.value = '';
+  }
+
+  return (
+    <div className="mt-6">
+      <input ref={inputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" onClick={() => inputRef.current?.click()} className="btn btn-plain">
+          Importar CSV
+        </button>
+        <button
+          type="button"
+          onClick={() => setHelp((h) => !h)}
+          className="text-sm text-ink-soft underline-offset-4 hover:text-ink hover:underline"
+        >
+          {help ? 'Ocultar formato' : '¿Qué formato tiene?'}
+        </button>
+      </div>
+      {help && (
+        <pre className="mt-2 overflow-x-auto rounded-md border-2 border-ink bg-white p-3 text-xs">{CSV_TEMPLATE}</pre>
+      )}
+      {error && <p className="mt-2 text-sm font-semibold text-bad">{error}</p>}
     </div>
   );
 }

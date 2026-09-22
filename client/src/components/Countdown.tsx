@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { sound } from '../lib/sound';
 
 /** Cuenta regresiva basada en la hora de fin que dicta el servidor (corrigiendo el desfase de reloj). */
 export function useRemainingMs(endsAt: number, clockOffset: number) {
@@ -13,13 +14,21 @@ export function useRemainingMs(endsAt: number, clockOffset: number) {
   return remaining;
 }
 
-export function CountdownCircle({ endsAt, clockOffset, totalSec, size = 'lg' }: {
+export function CountdownCircle({ endsAt, clockOffset, totalSec, size = 'lg', audible = false }: {
   endsAt: number;
   clockOffset: number;
   totalSec: number;
   size?: 'sm' | 'lg';
+  audible?: boolean; // un tic por segundo en los últimos 5 (pantalla del anfitrión)
 }) {
   const remaining = useRemainingMs(endsAt, clockOffset);
+  const lastTick = useRef(0);
+  const seconds = Math.ceil(remaining / 1000);
+  useEffect(() => {
+    if (!audible || seconds > 5 || seconds <= 0 || lastTick.current === seconds) return;
+    lastTick.current = seconds;
+    sound.tick();
+  }, [audible, seconds]);
   const fraction = remaining / (totalSec * 1000);
   const r = 44;
   const urgent = remaining <= 5000 && totalSec > 5;
@@ -47,7 +56,7 @@ export function CountdownCircle({ endsAt, clockOffset, totalSec, size = 'lg' }: 
           size === 'lg' ? 'text-3xl sm:text-5xl xl:text-6xl' : 'text-lg'
         } ${urgent ? 'text-bad' : ''}`}
       >
-        {Math.ceil(remaining / 1000)}
+        {seconds}
       </span>
     </div>
   );
