@@ -19,20 +19,27 @@ const SIGNATURES: { mime: string; test: (b: Buffer) => boolean }[] = [
 
 export const imagesRouter = Router();
 
-imagesRouter.post('/', express.raw({ type: 'image/*', limit: MAX_BYTES }), async (req, res) => {
-  const body = req.body;
-  if (!Buffer.isBuffer(body) || body.length === 0) {
-    res.status(400).json({ error: 'Envía una imagen (JPEG, PNG, WebP o GIF)' });
-    return;
-  }
-  const mime = SIGNATURES.find((s) => s.test(body))?.mime;
-  if (!mime) {
-    res.status(400).json({ error: 'Formato de imagen no soportado' });
-    return;
-  }
-  const image = await prisma.image.create({ data: { mime, data: new Uint8Array(body) }, select: { id: true } });
-  res.status(201).json({ id: image.id } satisfies UploadImageResponse);
-});
+// Subir imágenes es solo del anfitrión y con límite: si no, cualquiera llena la base de datos.
+imagesRouter.post(
+  '/',
+  requireHost,
+  rateLimit({ limit: 60, windowMs: 60 * 60_000, message: 'Demasiadas imágenes seguidas, espera un rato' }),
+  express.raw({ type: 'image/*', limit: MAX_BYTES }),
+  async (req, res) => {
+    const body = req.body;
+    if (!Buffer.isBuffer(body) || body.length === 0) {
+      res.status(400).json({ error: 'Envía una imagen (JPEG, PNG, WebP o GIF)' });
+      return;
+    }
+    const mime = SIGNATURES.find((s) => s.test(body))?.mime;
+    if (!mime) {
+      res.status(400).json({ error: 'Formato de imagen no soportado' });
+      return;
+    }
+    const image = await prisma.image.create({ data: { mime, data: new Uint8Array(body) }, select: { id: true } });
+    res.status(201).json({ id: image.id } satisfies UploadImageResponse);
+  },
+);
 
 imagesRouter.get('/:id', async (req, res) => {
   const image = await prisma.image.findUnique({ where: { id: req.params.id } });

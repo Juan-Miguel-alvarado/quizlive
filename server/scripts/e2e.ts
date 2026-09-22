@@ -65,6 +65,17 @@ async function main() {
     }),
   });
   check(bad.status === 400, 'opción única con dos correctas rechazada al guardar');
+
+  // Sin clave de anfitrión no se puede tocar nada del anfitrión
+  for (const [ruta, init] of [
+    ['/api/quizzes', {}],
+    ['/api/history', {}],
+    ['/api/games', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"quizId":"x"}' }],
+    ['/api/images', { method: 'POST', headers: { 'content-type': 'image/png' }, body: 'x' }],
+  ] as [string, RequestInit][]) {
+    const res = await fetch(`${URL}${ruta}`, init);
+    check(res.status === 401, `${ruta} exige clave de anfitrión (${res.status})`);
+  }
   const { pin, hostToken } = await fetch(`${URL}/api/games`, {
     method: 'POST',
     headers: auth,
