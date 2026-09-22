@@ -5,6 +5,7 @@ services:
     name: quizlivee-server # → https://quizlivee-server.onrender.com (es la URL que usa netlify.toml)
     runtime: node
     plan: free
+    autoDeploy: true # cada push a main se despliega solo
     buildCommand: npx --yes pnpm@11.0.8 install --frozen-lockfile
     startCommand: cd server && npm run start # aplica migraciones y arranca
     healthCheckPath: /api/health
