@@ -2,21 +2,21 @@
 
 Cosas que se pensaron y quedaron fuera, ordenadas de más a menos útil para el uso en la iglesia.
 
+Del spec de la trivia (v2) ya están hechos: el QR en la TV, la música y las animaciones. Quedan:
+imágenes en las opciones, importar directo desde Word/Excel (hoy se pega el texto), exportar resultados
+y varias partidas en paralelo (técnicamente ya se puede: cada partida tiene su PIN).
+
 ## Modo equipos / familias
 Que el anfitrión defina de 2 a 6 equipos (por ejemplo "Jóvenes", "Adultos", "Familia Pérez") y cada
 jugador elija uno al entrar. La clasificación sumaría el promedio del equipo, no la suma, para que un
 equipo grande no gane solo por ser grande.
 Toca `Game` (equipo por jugador y ranking por equipo), `playerJoinSchema` (campo opcional
-`team`), el editor del quiz o la pantalla de lanzar partida, y `Leaderboard`/`Podium`.
+`team`), el editor de la trivia o la pantalla de abrir sala, y `Leaderboard`/`Podium`.
 
 ## Servidor que no se duerma
 El plan gratis de Render duerme el servidor y su Postgres gratis caduca a los 30 días. Para uso
 semanal conviene el plan *Starter* del servicio web y una base de datos de pago (o Neon/Supabase gratis
 con `DATABASE_URL` apuntando allí).
-
-## Música de fondo en el lobby
-Un bucle suave con WebAudio (como los efectos de `client/src/lib/sound.ts`, sin archivos) mientras la
-gente entra, con su botón para silenciar.
 
 ## Avance automático
 Opción "modo automático": revelar, mostrar la clasificación y pasar a la siguiente pregunta sin tocar

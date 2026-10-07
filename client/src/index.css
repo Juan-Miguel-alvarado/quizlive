@@ -1,6 +1,9 @@
 @import "tailwindcss";
 /* Roboto y Roboto Mono se cargan desde Google Fonts en index.html. */
 
+/* Pantallas bajas (TV de 1280×720, laptops): la TV reduce tamaños para que todo quepa sin cortarse. */
+@custom-variant short (@media (max-height: 800px));
+
 @theme {
   --font-sans: "Roboto", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Roboto Mono", ui-monospace, monospace;

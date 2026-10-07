@@ -32,7 +32,7 @@ function reducer(state: GameState, action: Action): GameState {
       return {
         ...state,
         clockOffset: action.clockOffset,
-        snap: { ...state.snap, phase: 'countdown', countdown: action.countdown, reveal: null, leaderboard: null },
+        snap: { ...state.snap, phase: 'countdown', countdown: action.countdown, reveal: null, leaderboard: null, seriesEnd: null },
       };
     case 'question':
       if (!state.snap) return state;
@@ -99,7 +99,9 @@ export function useGame(join: () => Promise<AckResponse<{ state: GameSnapshot }>
         me: s.me && { ...s.me, score: r.totalScore, rank: r.rank, lastResult: r },
       })),
     );
-    socket.on('game:leaderboard', ({ top }) => patch((s) => ({ ...s, phase: 'leaderboard', leaderboard: top })));
+    socket.on('game:leaderboard', ({ top, seriesEnd }) =>
+      patch((s) => ({ ...s, phase: 'leaderboard', leaderboard: top, seriesEnd })),
+    );
     socket.on('game:podium', ({ top, me }) =>
       patch((s) => ({
         ...s,

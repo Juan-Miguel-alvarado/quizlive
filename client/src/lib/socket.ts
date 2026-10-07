@@ -2,6 +2,7 @@ import type {
   AckResponse,
   ClientToServerEvents,
   HostJoinPayload,
+  ScreenJoinPayload,
   PlayerAnswerPayload,
   PlayerJoinPayload,
   PlayerReactPayload,
@@ -34,6 +35,8 @@ async function call<T>(send: (s: ClientSocket) => Promise<AckResponse<T>>): Prom
 
 export const gameActions = {
   hostJoin: (p: HostJoinPayload) => call((s) => s.timeout(ACK_TIMEOUT_MS).emitWithAck('host:join', p)),
+  /** Pantalla TV: solo mira. */
+  screenJoin: (p: ScreenJoinPayload) => call((s) => s.timeout(ACK_TIMEOUT_MS).emitWithAck('screen:join', p)),
   hostStart: () => call((s) => s.timeout(ACK_TIMEOUT_MS).emitWithAck('host:start')),
   hostNext: () => call((s) => s.timeout(ACK_TIMEOUT_MS).emitWithAck('host:next')),
   hostEnd: () => call((s) => s.timeout(ACK_TIMEOUT_MS).emitWithAck('host:end')),

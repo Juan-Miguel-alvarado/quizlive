@@ -21,7 +21,7 @@ export default function HistoryList() {
         <Wordmark />
         <Link to="/host" className="btn btn-plain">
           <ArrowLeft />
-          Tus quizzes
+          Tus trivias
         </Link>
       </header>
 

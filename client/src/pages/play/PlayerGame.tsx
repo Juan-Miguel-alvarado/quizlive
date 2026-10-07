@@ -1,4 +1,4 @@
-import type { GameSnapshot } from '@quiz/shared';
+import type { GameSnapshot, ScoreEntry } from '@quiz/shared';
 import { useEffect, useState } from 'react';
 import {
   ArrowRepeat,
@@ -61,18 +61,20 @@ export default function PlayerGame() {
 
   if (!snap?.me) return <CenteredMessage title="Conectando…" />;
   const resultBg = snap.phase === 'reveal' ? resultStyle(snap).bg : '';
-  const questionNumber = (snap.question?.index ?? snap.countdown?.index ?? -1) + 1;
+  const where = snap.question ?? snap.countdown;
 
   return (
     // La barra inferior es fija: el padding de abajo deja su espacio (y el de la etiqueta de Netlify).
     <div className={`flex min-h-dvh flex-col pb-[calc(4rem+var(--badge-space))] ${resultBg}`}>
       <ConnectionBanner connected={game.connected} />
       <header className="flex items-center gap-3 bg-white px-4 py-1.5 text-ink shadow-3d-sm">
-        <span className="font-bold">PIN {snap.pin}</span>
-        {questionNumber > 0 && (
-          <span className="text-ink-soft">
-            · Pregunta {questionNumber} de {snap.totalQuestions}
+        {/* Durante la pregunta importa dónde vamos; el resto del tiempo, el PIN. */}
+        {where && (snap.phase === 'countdown' || snap.phase === 'question' || snap.phase === 'reveal') ? (
+          <span className="min-w-0 truncate font-bold whitespace-nowrap">
+            Serie {where.series.index + 1} · Pregunta {where.inSeries.index + 1} de {where.inSeries.total}
           </span>
+        ) : (
+          <span className="font-bold whitespace-nowrap">PIN {snap.pin}</span>
         )}
         <button
           onClick={() => setBigText(textSize.toggle())}
@@ -108,25 +110,44 @@ export default function PlayerGame() {
         {snap.phase === 'reveal' && <ResultScreen snap={snap} />}
         {snap.phase === 'leaderboard' && (
           <Centered>
-            <RankBadge label="Vas en el puesto" rank={snap.me.rank} />
-            {snap.me.rank <= 5 && (
-              <p className="pill mt-6 text-lg">
-                <TrophyFill className="size-5 text-gold" />
-                ¡Estás en el top 5!
+            {snap.seriesEnd && (
+              <p className="text-lg font-bold text-stage-soft">
+                Fin de la Serie {snap.seriesEnd.series.index + 1}: {snap.seriesEnd.series.title}
               </p>
             )}
-            <div className="mt-10 w-full">
+            <TopFive entries={snap.leaderboard ?? []} myId={snap.me.id} />
+            <p className="mt-5 text-xl font-bold">
+              Vas en el puesto <span className="font-black">{snap.me.rank}</span> con{' '}
+              <span className="font-black">{snap.me.score.toLocaleString('es')}</span> puntos
+            </p>
+            <div className="mt-8 w-full">
               <ReactionBar />
             </div>
           </Centered>
         )}
         {snap.phase === 'podium' && (
           <Centered>
-            <RankBadge label="Terminaste en el puesto" rank={snap.me.rank} />
+            {snap.podium?.[0] && (
+              <div className="mb-4">
+                <p className="pill text-lg">
+                  <TrophyFill className="size-5 text-gold" />
+                  ¡Ganador!
+                </p>
+                <p className="mt-2 text-3xl font-black">
+                  <span aria-hidden>{snap.podium[0].avatar} </span>
+                  {snap.podium[0].nickname}
+                </p>
+              </div>
+            )}
+            <TopFive entries={snap.podium ?? []} myId={snap.me.id} />
+            <p className="mt-5 text-xl font-bold">
+              Terminaste en el puesto <span className="font-black">{snap.me.rank}</span> con{' '}
+              <span className="font-black">{snap.me.score.toLocaleString('es')}</span> puntos
+            </p>
             {snap.me.rank <= 3 && (
               <>
                 <Confetti />
-                <p className="pill mt-6 text-lg">
+                <p className="pill mt-4 text-lg">
                   <TrophyFill className="size-5 text-gold" />
                   ¡Estás en el podio!
                 </p>
@@ -157,14 +178,28 @@ export default function PlayerGame() {
   );
 }
 
-function RankBadge({ label, rank }: { label: string; rank: number }) {
+/** El mismo top 5 que muestra la TV (o el podio al final), con la propia fila resaltada. */
+function TopFive({ entries, myId }: { entries: ScoreEntry[]; myId: string }) {
   return (
-    <>
-      <p className="text-xl font-bold text-stage-soft">{label}</p>
-      <p className="mt-2 grid size-40 animate-[pop_300ms_both] place-items-center rounded-full bg-white text-8xl font-black text-stage-dark tabular-nums shadow-3d-lg">
-        {rank}
-      </p>
-    </>
+    <ol className="mt-3 w-full max-w-sm space-y-2">
+      {entries.map((e) => (
+        <li
+          key={e.playerId}
+          className={`flex animate-[slide-in_350ms_both] items-center gap-3 rounded-xl bg-white px-3 py-2 text-left text-ink shadow-3d-sm ${
+            e.playerId === myId ? 'ring-4 ring-gold' : ''
+          }`}
+        >
+          <span className="w-7 text-center text-lg font-black">
+            {e.rank === 1 ? <TrophyFill className="mx-auto size-5 text-gold" aria-label="1" /> : e.rank}
+          </span>
+          <span className="text-2xl" aria-hidden>
+            {e.avatar}
+          </span>
+          <span className="min-w-0 flex-1 truncate font-black">{e.nickname}</span>
+          <span className="font-black tabular-nums">{e.score.toLocaleString('es')}</span>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -232,7 +267,7 @@ function AnswerScreen({ game }: { game: Game }) {
   return (
     <div className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-3">
       <div className="card flex items-center gap-3 p-3">
-        <p className="flex-1 text-xl leading-snug font-black">{q.text}</p>
+        <p className={`flex-1 leading-snug font-black ${q.text.length > 120 ? 'text-lg' : 'text-xl'}`}>{q.text}</p>
         <CountdownCircle endsAt={q.endsAt} clockOffset={game.clockOffset} totalSec={q.timeLimitSec} size="sm" />
       </div>
       {q.imageId && (
@@ -295,6 +330,8 @@ function ResultScreen({ snap }: { snap: GameSnapshot }) {
   const r = snap.me!.lastResult;
   const { title, Icon } = resultStyle(snap);
   const explanation = snap.reveal?.explanation;
+  const q = snap.question;
+  const correctIndices = snap.reveal?.correctIndices ?? [];
   return (
     <Centered>
       {r?.correct && <Confetti pieces={80} />}
@@ -307,11 +344,28 @@ function ResultScreen({ snap }: { snap: GameSnapshot }) {
         <p className="mt-3 flex items-center gap-1.5 rounded-full bg-accent px-4 py-1 text-lg font-black text-ink shadow-3d-sm">
           <Fire className="size-5" />
           {r.streak} seguidas
-          {r.streakBonus > 0 && ` · +${r.streakBonus} extra`}
         </p>
       )}
+      {/* Cuál era la correcta, con su figura y su color: se ve aunque uno haya fallado. */}
+      {q && correctIndices.length > 0 && (
+        <div className="mt-5 w-full max-w-sm">
+          <p className="mb-1.5 font-bold text-white/90">{correctIndices.length > 1 ? 'Las correctas eran:' : 'La correcta era:'}</p>
+          {correctIndices.map((i) => {
+            const style = optionStyle(q.type, i);
+            return (
+              <p key={i} className="mb-1.5 flex items-center gap-3 rounded-xl bg-white px-3 py-2 text-left text-lg font-black text-ink shadow-3d-sm">
+                <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${style.bg} ${style.text}`}>
+                  <OptionShape shape={style.shape} className="size-5" />
+                </span>
+                <span className="min-w-0 flex-1 break-words">{q.options[i]}</span>
+                <CheckCircleFill className="size-6 shrink-0 text-good" />
+              </p>
+            );
+          })}
+        </div>
+      )}
       {explanation && (
-        <p className="card mt-6 flex max-w-sm items-start gap-2 px-4 py-3 text-left text-lg font-medium">
+        <p className="card mt-4 flex max-w-sm items-start gap-2 px-4 py-3 text-left text-lg font-medium">
           <LightbulbFill className="mt-1 size-5 shrink-0 text-opt-yellow" />
           <span>{explanation}</span>
         </p>

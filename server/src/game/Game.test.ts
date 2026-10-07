@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../lib/prisma', () => ({ prisma: { quiz: { count: vi.fn(async () => 1) }, game: { create: vi.fn(async () => ({})) } } }));
 
 const { Game, GameError } = await import('./Game');
-const { streakBonus } = await import('./scoring');
 type GameType = InstanceType<typeof Game>;
 
 interface Emitted {
@@ -38,13 +37,16 @@ class FakeSocket {
   emit() {}
 }
 
+// Dos series: "Génesis" (P1, P2) y "¿Quién dijo?" (P3, selección múltiple).
 const quiz = {
   id: 'quiz1',
   title: 'Prueba',
+  scoring: { base: 100, bonus: 50 },
+  series: [{ title: 'Génesis' }, { title: '¿Quién dijo?' }],
   questions: [
-    { type: 'single' as const, text: 'P1', imageId: null, options: ['a', 'b'], correctIndices: [0], timeLimitSec: 10, explanation: 'Génesis 1:1' },
-    { type: 'single' as const, text: 'P2', imageId: null, options: ['a', 'b'], correctIndices: [1], timeLimitSec: 10, explanation: null },
-    { type: 'multiple' as const, text: 'P3', imageId: null, options: ['a', 'b', 'c'], correctIndices: [0, 2], timeLimitSec: 10, explanation: null },
+    { seriesIndex: 0, type: 'single' as const, text: 'P1', imageId: null, options: ['a', 'b'], correctIndices: [0], timeLimitSec: 10, explanation: 'Génesis 1:1' },
+    { seriesIndex: 0, type: 'single' as const, text: 'P2', imageId: null, options: ['a', 'b'], correctIndices: [1], timeLimitSec: 10, explanation: null },
+    { seriesIndex: 1, type: 'multiple' as const, text: 'P3', imageId: null, options: ['a', 'b', 'c'], correctIndices: [0, 2], timeLimitSec: 10, explanation: null },
   ],
 };
 
@@ -145,42 +147,97 @@ describe('Game', () => {
       explanation: 'Génesis 1:1',
     });
     const resultados = io.emitted.filter((e) => e.event === 'player:result').map((e) => e.payload as { points: number });
-    expect(resultados[0]!.points).toBe(1000);
+    expect(resultados[0]!.points).toBe(150); // 100 fijos + 50 por responder al instante
     expect(resultados[1]!.points).toBe(0);
   });
 
-  it('suma bonus por racha al segundo acierto seguido', () => {
+  it('la racha se cuenta pero no da puntos extra', () => {
     const ana = addPlayer('Ana');
     startQuestion();
     game.answer(ana.playerId, 0, [0]);
-    vi.advanceTimersByTime(10000); // cierra la pregunta 1
-
-    game.next(); // reveal → ranking
-    startQuestion(); // ranking → pregunta 2
+    game.next(); // revelación → cuenta regresiva de la pregunta 2 (misma serie: sin tabla)
+    vi.advanceTimersByTime(5000);
     game.answer(ana.playerId, 1, [1]);
-    vi.advanceTimersByTime(10000);
 
-    const result = lastEvent('player:result') as { streak: number; streakBonus: number; points: number };
+    const result = lastEvent('player:result') as { streak: number; points: number; totalScore: number };
     expect(result.streak).toBe(2);
-    expect(result.streakBonus).toBe(streakBonus(2));
-    expect(result.points).toBe(1000 + streakBonus(2));
+    expect(result.points).toBe(150);
+    expect(result.totalScore).toBe(300);
+  });
+
+  it('muestra la tabla solo al terminar cada serie y el ganador al final', () => {
+    const ana = addPlayer('Ana');
+    game.start();
+    vi.advanceTimersByTime(5000);
+    expect(lastEvent('question:start')).toMatchObject({ series: { index: 0, total: 2, title: 'Génesis' }, inSeries: { index: 0, total: 2 } });
+    game.answer(ana.playerId, 0, [0]);
+    expect(lastEvent('question:reveal')).toMatchObject({ endsSeries: false });
+
+    game.next(); // P1 no termina la serie: va directo a la cuenta de P2
+    expect(game.phase).toBe('countdown');
+    vi.advanceTimersByTime(5000);
+    game.answer(ana.playerId, 1, [1]);
+    expect(lastEvent('question:reveal')).toMatchObject({ endsSeries: true });
+
+    game.next(); // fin de "Génesis": tabla
+    expect(game.phase).toBe('leaderboard');
+    expect(lastEvent('game:leaderboard')).toMatchObject({
+      top: [{ nickname: 'Ana', score: 300 }],
+      seriesEnd: { series: { index: 0, title: 'Génesis' }, isLast: false },
+    });
+    expect(game.snapshot(null).seriesEnd).toMatchObject({ isLast: false });
+
+    game.next(); // "Iniciar Serie 2"
+    expect(lastEvent('question:countdown')).toMatchObject({ series: { index: 1, title: '¿Quién dijo?' }, inSeries: { index: 0, total: 1 } });
+    vi.advanceTimersByTime(5000);
+    game.answer(ana.playerId, 2, [0, 2]);
+    game.next(); // última de la última serie: tabla final
+    expect(lastEvent('game:leaderboard')).toMatchObject({ seriesEnd: { isLast: true } });
+    game.next(); // "Ver ganador"
+    expect(game.phase).toBe('podium');
+    expect(lastEvent('game:podium')).toMatchObject({ top: [{ nickname: 'Ana' }] });
+  });
+
+  it('la pantalla TV recibe lo del anfitrión pero no puede dirigir', () => {
+    addPlayer('Ana');
+    const tv = new FakeSocket('tv');
+    const state = game.attachScreen(tv as never);
+    expect(state.players).toHaveLength(1);
+    expect(tv.rooms).toEqual(['game:123456', 'game:123456:host']);
+    expect(game.isHost(tv.id)).toBe(false);
+    expect(game.isHost(host.id)).toBe(true); // la TV no desplaza al moderador
+  });
+
+  it('quien entra tarde empieza con 0 y las preguntas perdidas no suman', () => {
+    const ana = addPlayer('Ana');
+    startQuestion();
+    game.answer(ana.playerId, 0, [0]);
+    const caro = addPlayer('Caro'); // entra en la revelación de P1
+    game.next();
+    vi.advanceTimersByTime(5000);
+    game.answer(ana.playerId, 1, [1]);
+    game.answer(caro.playerId, 1, [1]);
+    const ranking = game.snapshot(null);
+    expect(ranking.phase).toBe('reveal');
+    const scores = Object.fromEntries(
+      io.emitted
+        .filter((e) => e.event === 'player:result' && e.target === caro.socket.id)
+        .map((e) => [e.target, (e.payload as { totalScore: number }).totalScore]),
+    );
+    expect(scores[caro.socket.id]).toBe(150);
   });
 
   it('en selección múltiple solo acierta quien marca exactamente las correctas', () => {
     const ana = addPlayer('Ana');
     const beto = addPlayer('Beto');
-    game.start();
+    startQuestion(); // P1
+    vi.advanceTimersByTime(10000);
+    game.next(); // → cuenta de P2
     vi.advanceTimersByTime(5000);
-    for (const i of [0, 1]) {
-      // avanza hasta la pregunta 3 (selección múltiple)
-      vi.advanceTimersByTime(10000);
-      game.next();
-      if (i === 0) startQuestion();
-      else {
-        game.next();
-        vi.advanceTimersByTime(5000);
-      }
-    }
+    vi.advanceTimersByTime(10000);
+    game.next(); // fin de serie → tabla
+    game.next(); // → cuenta de P3
+    vi.advanceTimersByTime(5000);
     game.answer(ana.playerId, 2, [2, 0]); // las dos correctas, en otro orden
     game.answer(beto.playerId, 2, [0]); // solo una
     vi.advanceTimersByTime(10000);
@@ -220,7 +277,7 @@ describe('Game', () => {
     const nuevo = new FakeSocket('s-Ana-2');
     io.sockets.set(nuevo.id, nuevo);
     const state = game.rejoinPlayer(nuevo as never, (game.snapshot(null) as never) && tokenOf(game, 'Ana'));
-    expect(state.me?.score).toBe(1000);
+    expect(state.me?.score).toBe(150);
   });
 
   it('vuelve a empezar con los mismos jugadores y el puntaje en cero', () => {

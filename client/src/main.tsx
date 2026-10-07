@@ -36,12 +36,14 @@ const router = createBrowserRouter([
       { index: true, lazy: page(() => import('./pages/host/QuizList')) },
       { path: 'quizzes/new', lazy: page(() => import('./pages/host/QuizEditor')) },
       { path: 'quizzes/:id', lazy: page(() => import('./pages/host/QuizEditor')) },
-      { path: 'game/:pin', lazy: page(() => import('./pages/host/HostGame')) },
+      { path: 'game/:pin', lazy: page(() => import('./pages/host/Moderator')) },
       { path: 'history', lazy: page(() => import('./pages/host/HistoryList')) },
       { path: 'history/:id', lazy: page(() => import('./pages/host/GameReport')) },
     ],
   },
   { path: '/play', element: <PlayerGame /> },
+  // Pantalla TV (solo mira). Pública: no muestra nada que el público no vaya a ver igualmente.
+  { path: '/tv/:pin', lazy: page(() => import('./pages/tv/TvScreen')) },
   { path: '/:pin', element: <JoinByPin /> },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);

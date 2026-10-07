@@ -1,12 +1,18 @@
 import {
   CSV_TEMPLATE,
+  DEFAULT_POINTS_CORRECT,
+  DEFAULT_SPEED_BONUS,
+  DEFAULT_TIME_LIMIT,
   MAX_OPTIONS,
   MIN_OPTIONS,
   QUESTION_TYPES,
+  parsePastedQuestion,
+  parsePastedQuestions,
   parseQuizCsv,
   quizInputSchema,
   TIME_LIMITS,
   TRUE_FALSE_OPTIONS,
+  type PastedQuestion,
   type QuestionInput,
   type QuestionType,
 } from '@quiz/shared';
@@ -15,8 +21,11 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  CheckCircleFill,
   CheckLg,
+  ClipboardPlus,
   Copy,
+  ExclamationTriangleFill,
   FiletypeCsv,
   ImageFill,
   PlusLg,
@@ -34,13 +43,14 @@ import {
 import { api, ApiRequestError } from '../../lib/api';
 import { imageUrl, uploadImage } from '../../lib/images';
 
-/** En el editor cada pregunta lleva una clave estable para que React no mezcle inputs al reordenar. */
+/** En el editor cada pregunta y serie lleva una clave estable para que React no mezcle inputs al reordenar. */
 type DraftQuestion = QuestionInput & { key: string };
+type DraftSeries = { key: string; title: string; questions: DraftQuestion[] };
 type Errors = Record<string, string>;
 
 // crypto.randomUUID no existe en http://<IP-local> (contexto no seguro); basta con algo único en memoria.
 let keySeq = 0;
-const newKey = () => `q${++keySeq}`;
+const newKey = () => `k${++keySeq}`;
 
 const emptyQuestion = (): DraftQuestion => ({
   key: newKey(),
@@ -49,9 +59,25 @@ const emptyQuestion = (): DraftQuestion => ({
   imageId: null,
   options: ['', '', '', ''],
   correctIndices: [0],
-  timeLimitSec: 20,
+  timeLimitSec: DEFAULT_TIME_LIMIT,
   explanation: null,
 });
+
+const emptySeries = (n: number): DraftSeries => ({ key: newKey(), title: `Serie ${n}`, questions: [emptyQuestion()] });
+
+/** Una pregunta sin tocar (la que trae una serie nueva): el pegado de varias la reemplaza. */
+const isBlank = (q: DraftQuestion) => !q.text && q.options.every((o) => !o) && !q.imageId;
+
+/** Pregunta del pegado rápido → pregunta del editor (4 opciones; sin asterisco queda sin marcar). */
+function fromPasted(p: PastedQuestion, base: DraftQuestion = emptyQuestion()): DraftQuestion {
+  return {
+    ...base,
+    type: base.type === 'truefalse' ? 'single' : base.type,
+    text: p.text ?? base.text,
+    options: p.options,
+    correctIndices: p.correctIndex === null ? [] : [p.correctIndex],
+  };
+}
 
 /** Adapta opciones y respuestas correctas al cambiar de tipo, conservando lo que se pueda. */
 function changeType(q: DraftQuestion, type: QuestionType): DraftQuestion {
@@ -60,15 +86,23 @@ function changeType(q: DraftQuestion, type: QuestionType): DraftQuestion {
     return { ...q, type, options: [...TRUE_FALSE_OPTIONS], correctIndices: [q.correctIndices[0] === 1 ? 1 : 0] };
   }
   const options = q.type === 'truefalse' ? ['', '', '', ''] : q.options;
-  const correctIndices = type === 'single' ? [q.correctIndices[0] ?? 0] : q.correctIndices;
+  const correctIndices = type === 'single' ? (q.correctIndices[0] === undefined ? [] : [q.correctIndices[0]]) : q.correctIndices;
   return { ...q, type, options, correctIndices };
+}
+
+function swap<T>(list: T[], i: number, j: number): T[] {
+  const next = [...list];
+  [next[i], next[j]] = [next[j]!, next[i]!];
+  return next;
 }
 
 export default function QuizEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
-  const [questions, setQuestions] = useState<DraftQuestion[] | null>(id ? null : [emptyQuestion()]);
+  const [pointsCorrect, setPointsCorrect] = useState(DEFAULT_POINTS_CORRECT);
+  const [speedBonusMax, setSpeedBonusMax] = useState(DEFAULT_SPEED_BONUS);
+  const [series, setSeries] = useState<DraftSeries[] | null>(id ? null : [emptySeries(1)]);
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -78,44 +112,45 @@ export default function QuizEditor() {
     api.getQuiz(id).then(
       (quiz) => {
         setTitle(quiz.title);
-        setQuestions(quiz.questions.map(({ id: _id, ...q }) => ({ ...q, key: newKey() })));
+        setPointsCorrect(quiz.pointsCorrect);
+        setSpeedBonusMax(quiz.speedBonusMax);
+        setSeries(
+          quiz.series.map((s) => ({
+            key: newKey(),
+            title: s.title,
+            questions: s.questions.map(({ id: _id, ...q }) => ({ ...q, key: newKey() })),
+          })),
+        );
       },
       (e: Error) => setFormError(e.message),
     );
   }, [id]);
 
-  if (!questions) {
+  if (!series) {
     return <p className="p-8 text-stage-soft">{formError ?? 'Cargando…'}</p>;
   }
 
-  const update = (index: number, fn: (q: DraftQuestion) => DraftQuestion) =>
-    setQuestions(questions.map((q, i) => (i === index ? fn(q) : q)));
-
-  const move = (index: number, delta: -1 | 1) => {
-    const next = [...questions];
-    [next[index], next[index + delta]] = [next[index + delta]!, next[index]!];
-    setQuestions(next);
-    setErrors({}); // los errores están indexados por posición
-  };
-
-  const remove = (index: number) => {
-    setQuestions(questions.filter((_, i) => i !== index));
+  // Los errores están indexados por posición: al mover o borrar se limpian.
+  const change = (next: DraftSeries[]) => {
+    setSeries(next);
     setErrors({});
   };
+  const updateSeries = (si: number, fn: (s: DraftSeries) => DraftSeries) =>
+    setSeries(series.map((s, i) => (i === si ? fn(s) : s)));
 
-  const duplicate = (index: number) => {
-    const next = [...questions];
-    next.splice(index + 1, 0, { ...questions[index]!, key: newKey() });
-    setQuestions(next);
-    setErrors({});
-  };
+  const totalQuestions = series.reduce((n, s) => n + s.questions.length, 0);
 
   async function handleSave() {
     setFormError(null);
-    const parsed = quizInputSchema.safeParse({ title, questions: questions!.map(({ key: _k, ...q }) => q) });
+    const parsed = quizInputSchema.safeParse({
+      title,
+      pointsCorrect,
+      speedBonusMax,
+      series: series!.map((s) => ({ title: s.title, questions: s.questions.map(({ key: _k, ...q }) => q) })),
+    });
     if (!parsed.success) {
       setErrors(Object.fromEntries(parsed.error.issues.map((i) => [i.path.join('.'), i.message])));
-      setFormError('Hay campos por corregir');
+      setFormError('Hay campos por corregir (marcados en rojo)');
       return;
     }
     setErrors({});
@@ -134,13 +169,13 @@ export default function QuizEditor() {
     }
   }
 
-  const questionHasError = (i: number) => Object.keys(errors).some((k) => k.startsWith(`questions.${i}.`));
+  const hasError = (prefix: string) => Object.keys(errors).some((k) => k.startsWith(prefix));
 
   return (
     <div className="min-h-dvh pb-[calc(7rem+var(--badge-space))]">
       <header className="sticky top-0 z-20 bg-stage-dark/95 shadow-3d backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
-          <Link to="/host" className="btn btn-plain px-3" aria-label="Volver a mis quizzes">
+          <Link to="/host" className="btn btn-plain px-3" aria-label="Volver a mis trivias">
             <ArrowLeft className="size-5" />
           </Link>
           <div className="min-w-0 flex-1">
@@ -148,8 +183,8 @@ export default function QuizEditor() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={120}
-              placeholder="Título del quiz"
-              aria-label="Título del quiz"
+              placeholder="Nombre de la trivia (ej. Día de la Biblia)"
+              aria-label="Nombre de la trivia"
               className={`w-full rounded-lg bg-transparent px-2 py-1 text-xl font-black tracking-tight text-white outline-none placeholder:text-white/50 focus:bg-white/10 sm:text-2xl ${
                 errors.title ? 'ring-2 ring-bad' : ''
               }`}
@@ -162,59 +197,68 @@ export default function QuizEditor() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl gap-8 px-4 pt-6 lg:grid lg:grid-cols-[13rem_1fr]">
-        <nav aria-label="Preguntas" className="hidden lg:block">
-          <ol className="sticky top-24 space-y-1">
-            {questions.map((q, i) => (
-              <li key={q.key}>
-                <a
-                  href={`#q-${q.key}`}
-                  className="flex items-baseline gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-white/10"
-                >
-                  <span className="font-mono text-xs text-stage-soft">{String(i + 1).padStart(2, '0')}</span>
-                  <span className={`truncate ${questionHasError(i) ? 'rounded bg-bad px-1 font-bold' : ''}`}>
-                    {q.text || <em className="text-stage-soft">Sin texto</em>}
-                  </span>
+      <div className="mx-auto max-w-6xl gap-8 px-4 pt-6 lg:grid lg:grid-cols-[14rem_1fr]">
+        <nav aria-label="Series y preguntas" className="hidden lg:block">
+          <ol className="sticky top-24 max-h-[calc(100dvh-8rem)] space-y-3 overflow-y-auto pr-1">
+            {series.map((s, si) => (
+              <li key={s.key}>
+                <a href={`#s-${s.key}`} className={`block truncate px-2 text-sm font-black ${hasError(`series.${si}.`) ? 'text-[#ffb3c0]' : ''}`}>
+                  {si + 1}. {s.title || 'Serie sin nombre'}
                 </a>
+                <ol className="mt-1 space-y-0.5">
+                  {s.questions.map((q, qi) => (
+                    <li key={q.key}>
+                      <a href={`#q-${q.key}`} className="flex items-baseline gap-2 rounded-lg px-2 py-1 text-sm hover:bg-white/10">
+                        <span className="font-mono text-xs text-stage-soft">{String(qi + 1).padStart(2, '0')}</span>
+                        <span className={`truncate ${hasError(`series.${si}.questions.${qi}.`) ? 'rounded bg-bad px-1 font-bold' : ''}`}>
+                          {q.text || <em className="text-stage-soft">Sin texto</em>}
+                        </span>
+                      </a>
+                    </li>
+                  ))}
+                </ol>
               </li>
             ))}
           </ol>
         </nav>
 
-        <main className="min-w-0">
+        <main className="min-w-0 space-y-6">
           <FieldError message={errors.title} />
-          <ol className="space-y-6">
-            {questions.map((q, i) => (
-              <QuestionCard
-                key={q.key}
-                q={q}
-                index={i}
-                count={questions.length}
-                errors={errors}
-                onChange={(fn) => update(i, fn)}
-                onMove={(d) => move(i, d)}
-                onRemove={() => remove(i)}
-                onDuplicate={() => duplicate(i)}
-              />
-            ))}
-          </ol>
-
-          <ImportCsv
-            onImport={(imported) => {
-              setQuestions([...questions, ...imported.map((q) => ({ ...q, key: newKey() }))]);
-              setErrors({});
+          <ScoringCard
+            pointsCorrect={pointsCorrect}
+            speedBonusMax={speedBonusMax}
+            onChange={(p, b) => {
+              setPointsCorrect(p);
+              setSpeedBonusMax(b);
             }}
+            errors={errors}
           />
 
+          {series.map((s, si) => (
+            <SeriesSection
+              key={s.key}
+              series={s}
+              index={si}
+              count={series.length}
+              errors={errors}
+              onChange={(fn) => updateSeries(si, fn)}
+              onReplace={(next) => change(series.map((x, i) => (i === si ? next : x)))}
+              onMove={(d) => change(swap(series, si, si + d))}
+              onRemove={() => {
+                if (s.questions.some((q) => !isBlank(q)) && !confirm(`¿Borrar la serie "${s.title}" con sus ${s.questions.length} preguntas?`)) return;
+                change(series.filter((_, i) => i !== si));
+              }}
+            />
+          ))}
+
           <button
-            onClick={() => setQuestions([...questions, emptyQuestion()])}
-            disabled={questions.length >= 50}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-white/40 py-5 font-black text-stage-soft transition-colors hover:border-white hover:bg-white/5 hover:text-white disabled:opacity-40"
+            onClick={() => change([...series, emptySeries(series.length + 1)])}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-white/40 py-5 text-lg font-black text-stage-soft transition-colors hover:border-white hover:bg-white/5 hover:text-white"
           >
             <PlusLg />
-            Añadir pregunta
+            Añadir serie
           </button>
-          <FieldError message={errors.questions} />
+          <FieldError message={errors.series} />
         </main>
       </div>
 
@@ -224,7 +268,8 @@ export default function QuizEditor() {
             {formError}
           </p>
           <p className="hidden text-sm text-stage-soft sm:block">
-            {questions.length} {questions.length === 1 ? 'pregunta' : 'preguntas'}
+            {series.length} {series.length === 1 ? 'serie' : 'series'} · {totalQuestions}{' '}
+            {totalQuestions === 1 ? 'pregunta' : 'preguntas'}
           </p>
           <button onClick={handleSave} disabled={saving} className="btn btn-accent sm:hidden">
             <Save />
@@ -236,10 +281,274 @@ export default function QuizEditor() {
   );
 }
 
-function QuestionCard(props: {
-  q: DraftQuestion;
+/** Puntaje de la trivia: puntos fijos por acertar + bono por rapidez. */
+function ScoringCard(props: {
+  pointsCorrect: number;
+  speedBonusMax: number;
+  onChange: (pointsCorrect: number, speedBonusMax: number) => void;
+  errors: Errors;
+}) {
+  const num = (v: string) => (v === '' ? 0 : Math.round(Number(v)));
+  return (
+    <section className="card p-4 sm:p-5">
+      <p className="font-black">Puntaje</p>
+      <p className="text-sm text-ink-soft">
+        Quien acierta gana los puntos fijos más un bono: completo si responde al instante y casi nada en el último segundo.
+        Equivocarse o no responder da 0.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-4">
+        <label className="flex items-center gap-2 font-bold">
+          Puntos por acertar
+          <input
+            type="number"
+            min={10}
+            max={1000}
+            value={props.pointsCorrect}
+            onChange={(e) => props.onChange(num(e.target.value), props.speedBonusMax)}
+            className="field w-24 py-1"
+          />
+        </label>
+        <label className="flex items-center gap-2 font-bold">
+          Bono máximo por rapidez
+          <input
+            type="number"
+            min={0}
+            max={500}
+            value={props.speedBonusMax}
+            onChange={(e) => props.onChange(props.pointsCorrect, num(e.target.value))}
+            className="field w-24 py-1"
+          />
+        </label>
+      </div>
+      <FieldError message={props.errors.pointsCorrect ?? props.errors.speedBonusMax} />
+    </section>
+  );
+}
+
+function SeriesSection(props: {
+  series: DraftSeries;
   index: number;
   count: number;
+  errors: Errors;
+  onChange: (fn: (s: DraftSeries) => DraftSeries) => void;
+  /** Cambios que reordenan o reemplazan preguntas (limpian los errores por posición). */
+  onReplace: (next: DraftSeries) => void;
+  onMove: (delta: -1 | 1) => void;
+  onRemove: () => void;
+}) {
+  const { series: s, index: si, errors } = props;
+  const [pasting, setPasting] = useState(false);
+  const setQuestions = (questions: DraftQuestion[]) => props.onReplace({ ...s, questions });
+  /** Si la serie solo tiene la pregunta vacía del principio, lo nuevo la reemplaza. */
+  const append = (added: DraftQuestion[]) =>
+    setQuestions([...(s.questions.length === 1 && isBlank(s.questions[0]!) ? [] : s.questions), ...added]);
+
+  return (
+    <section id={`s-${s.key}`} className="scroll-mt-24 rounded-3xl bg-black/15 p-3 sm:p-5">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-white px-3 py-1 text-sm font-black text-stage-dark">Serie {si + 1}</span>
+        <input
+          value={s.title}
+          onChange={(e) => props.onChange((cur) => ({ ...cur, title: e.target.value }))}
+          maxLength={80}
+          placeholder="Nombre de la serie (ej. ¿Quién dijo?)"
+          aria-label={`Nombre de la serie ${si + 1}`}
+          className={`min-w-0 flex-1 rounded-lg bg-transparent px-2 py-1 text-xl font-black text-white outline-none placeholder:text-white/50 focus:bg-white/10 ${
+            errors[`series.${si}.title`] ? 'ring-2 ring-bad' : ''
+          }`}
+        />
+        <div className="flex gap-1">
+          <button className="btn btn-plain px-2" title="Subir serie" disabled={si === 0} onClick={() => props.onMove(-1)}>
+            <ArrowUp />
+          </button>
+          <button className="btn btn-plain px-2" title="Bajar serie" disabled={si === props.count - 1} onClick={() => props.onMove(1)}>
+            <ArrowDown />
+          </button>
+          <button className="btn btn-plain px-2" title="Borrar serie" disabled={props.count === 1} onClick={props.onRemove}>
+            <Trash3 />
+          </button>
+        </div>
+      </div>
+      <FieldError message={errors[`series.${si}.title`]} onDark />
+
+      {s.questions.length === 0 && (
+        <p className="mb-4 rounded-xl bg-white/10 p-4 text-center text-stage-soft">
+          Esta serie todavía no tiene preguntas. Mientras esté vacía, se salta al jugar.
+        </p>
+      )}
+
+      <ol className="space-y-5">
+        {s.questions.map((q, qi) => (
+          <QuestionCard
+            key={q.key}
+            q={q}
+            index={qi}
+            count={s.questions.length}
+            errPrefix={`series.${si}.questions.${qi}`}
+            errors={errors}
+            onChange={(fn) => props.onChange((cur) => ({ ...cur, questions: cur.questions.map((x, i) => (i === qi ? fn(x) : x)) }))}
+            onMove={(d) => setQuestions(swap(s.questions, qi, qi + d))}
+            onRemove={() => setQuestions(s.questions.filter((_, i) => i !== qi))}
+            onDuplicate={() => {
+              const next = [...s.questions];
+              next.splice(qi + 1, 0, { ...q, key: newKey() });
+              setQuestions(next);
+            }}
+          />
+        ))}
+      </ol>
+
+      {pasting && (
+        <BulkPaste
+          onCancel={() => setPasting(false)}
+          onUse={(pasted) => {
+            append(pasted.map((p) => fromPasted(p)));
+            setPasting(false);
+          }}
+        />
+      )}
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button onClick={() => append([emptyQuestion()])} className="btn btn-primary">
+          <PlusLg />
+          Añadir pregunta
+        </button>
+        <button onClick={() => setPasting((p) => !p)} className="btn btn-plain">
+          <ClipboardPlus />
+          Pegar varias preguntas
+        </button>
+        <ImportCsv onImport={(imported) => append(imported.map((q) => ({ ...q, key: newKey() })))} />
+      </div>
+    </section>
+  );
+}
+
+/** Vista previa de una pregunta pegada: lo que se va a guardar, con la correcta marcada. */
+function PastePreview({ p, n }: { p: PastedQuestion; n?: number }) {
+  return (
+    <div className={`rounded-xl border-2 p-3 ${p.problem ? 'border-bad bg-bad/5' : 'border-black/10 bg-paper'}`}>
+      {p.text !== null && (
+        <p className="mb-2 font-black">
+          {n !== undefined && <span className="text-ink-soft">{n}. </span>}
+          {p.text}
+        </p>
+      )}
+      <ul className="grid gap-1 sm:grid-cols-2">
+        {p.options.map((o, i) => {
+          const style = optionStyle('single', i);
+          const correct = p.correctIndex === i;
+          return (
+            <li key={i} className={`flex items-center gap-2 rounded-lg px-2 py-1 font-semibold ${correct ? 'bg-good/15' : ''}`}>
+              <span className={`grid size-6 shrink-0 place-items-center rounded-md text-xs font-black ${style.bg} ${style.text}`}>
+                {style.letter}
+              </span>
+              <span className="min-w-0 flex-1 break-words">{o}</span>
+              {correct && <CheckCircleFill className="shrink-0 text-good" />}
+            </li>
+          );
+        })}
+      </ul>
+      {p.problem ? (
+        <p className="mt-2 flex items-center gap-1.5 text-sm font-bold text-bad">
+          <ExclamationTriangleFill /> {p.problem}
+        </p>
+      ) : (
+        p.correctIndex === null && (
+          <p className="mt-2 text-sm font-semibold text-ink-soft">Sin asterisco: marca la correcta después de agregarla.</p>
+        )
+      )}
+    </div>
+  );
+}
+
+const PASTE_HELP =
+  'Pega la pregunta y sus 4 respuestas, una por línea (o solo las 4 respuestas). Se quitan solos los "a)", "A.", "1." y viñetas. Pon un * junto a la correcta para marcarla.';
+
+/** Pegado rápido dentro de una pregunta. */
+function QuickPaste({ onUse, onCancel }: { onUse: (p: PastedQuestion) => void; onCancel: () => void }) {
+  const [text, setText] = useState('');
+  const parsed = text.trim() ? parsePastedQuestion(text) : null;
+  return (
+    <div className="mb-4 rounded-2xl border-2 border-stage-light/40 bg-stage-light/5 p-3">
+      <p className="text-sm text-ink-soft">{PASTE_HELP}</p>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={5}
+        autoFocus
+        placeholder={'¿Quién construyó el arca?\na) Noé*\nb) Moisés\nc) David\nd) Pedro'}
+        className="field mt-2 font-mono text-sm"
+      />
+      {parsed && (
+        <div className="mt-2">
+          <PastePreview p={parsed} />
+        </div>
+      )}
+      <div className="mt-2 flex justify-end gap-2">
+        <button onClick={onCancel} className="btn btn-light">
+          Cancelar
+        </button>
+        <button disabled={!parsed || !!parsed.problem} onClick={() => parsed && onUse(parsed)} className="btn btn-accent">
+          <CheckLg />
+          Usar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Pegar una serie entera del Word: bloques de pregunta + 4 respuestas. */
+function BulkPaste({ onUse, onCancel }: { onUse: (p: PastedQuestion[]) => void; onCancel: () => void }) {
+  const [text, setText] = useState('');
+  const parsed = text.trim() ? parsePastedQuestions(text) : [];
+  const problems = parsed.filter((p) => p.problem).length;
+  return (
+    <div className="card mt-4 p-4">
+      <p className="font-black">Pegar varias preguntas</p>
+      <p className="text-sm text-ink-soft">
+        Copia del Word una serie entera: cada pregunta seguida de sus 4 respuestas. Los títulos sueltos se ignoran. Revisa
+        la vista previa antes de agregarlas.
+      </p>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={8}
+        autoFocus
+        placeholder={'1. ¿Quién construyó el arca?\nNoé*\nMoisés\nDavid\nPedro\n2. ¿Cuántos años vivió Adán?\n900\n912\n930*\n969'}
+        className="field mt-2 font-mono text-sm"
+      />
+      {parsed.length > 0 && (
+        <div className="mt-3 max-h-[28rem] space-y-2 overflow-y-auto">
+          {parsed.map((p, i) => (
+            <PastePreview key={i} p={p} n={i + 1} />
+          ))}
+        </div>
+      )}
+      <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+        {problems > 0 && (
+          <p className="mr-auto text-sm font-bold text-bad">
+            {problems} {problems === 1 ? 'pregunta necesita' : 'preguntas necesitan'} revisión
+          </p>
+        )}
+        <button onClick={onCancel} className="btn btn-light">
+          Cancelar
+        </button>
+        <button disabled={parsed.length === 0 || problems > 0} onClick={() => onUse(parsed)} className="btn btn-accent">
+          <CheckLg />
+          Agregar {parsed.length || ''} {parsed.length === 1 ? 'pregunta' : 'preguntas'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function QuestionCard(props: {
+  q: DraftQuestion;
+  /** Posición dentro de su serie (desde 0). */
+  index: number;
+  count: number;
+  /** Prefijo de los errores de esta pregunta: "series.1.questions.3". */
+  errPrefix: string;
   errors: Errors;
   onChange: (fn: (q: DraftQuestion) => DraftQuestion) => void;
   onMove: (delta: -1 | 1) => void;
@@ -247,7 +556,8 @@ function QuestionCard(props: {
   onDuplicate: () => void;
 }) {
   const { q, index, errors, onChange } = props;
-  const err = (field: string) => errors[`questions.${index}.${field}`];
+  const err = (field: string) => errors[`${props.errPrefix}.${field}`];
+  const [pasting, setPasting] = useState(false);
   const optionError =
     err('options') ?? q.options.map((_, oi) => err(`options.${oi}`)).find(Boolean) ?? err('correctIndices');
 
@@ -315,14 +625,27 @@ function QuestionCard(props: {
           <IconButton label="Bajar" disabled={index === props.count - 1} onClick={() => props.onMove(1)}>
             <ArrowDown />
           </IconButton>
-          <IconButton label="Duplicar" disabled={props.count >= 50} onClick={props.onDuplicate}>
+          <IconButton label="Pegado rápido" onClick={() => setPasting((p) => !p)}>
+            <ClipboardPlus />
+          </IconButton>
+          <IconButton label="Duplicar" onClick={props.onDuplicate}>
             <Copy />
           </IconButton>
-          <IconButton label="Eliminar" disabled={props.count === 1} onClick={props.onRemove}>
+          <IconButton label="Eliminar" onClick={props.onRemove}>
             <Trash3 />
           </IconButton>
         </div>
       </div>
+
+      {pasting && (
+        <QuickPaste
+          onCancel={() => setPasting(false)}
+          onUse={(pasted) => {
+            onChange((cur) => fromPasted(pasted, cur));
+            setPasting(false);
+          }}
+        />
+      )}
 
       <div className="grid gap-4 md:grid-cols-[1fr_12rem]">
         <div>
@@ -504,31 +827,34 @@ function ImportCsv({ onImport }: { onImport: (questions: QuestionInput[]) => voi
   }
 
   return (
-    <div className="mt-6">
+    <div className="contents">
       <input ref={inputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="button" onClick={() => inputRef.current?.click()} className="btn btn-plain">
-          <FiletypeCsv className="size-5" />
-          Importar CSV
-        </button>
-        <button
-          type="button"
-          onClick={() => setHelp((h) => !h)}
-          className="text-sm text-stage-soft underline-offset-4 hover:text-white hover:underline"
-        >
-          {help ? 'Ocultar formato' : '¿Qué formato tiene?'}
-        </button>
-      </div>
+      <button type="button" onClick={() => inputRef.current?.click()} className="btn btn-plain">
+        <FiletypeCsv className="size-5" />
+        Importar CSV
+      </button>
+      <button
+        type="button"
+        onClick={() => setHelp((h) => !h)}
+        className="text-sm text-stage-soft underline-offset-4 hover:text-white hover:underline"
+      >
+        {help ? 'Ocultar formato' : '¿Qué formato tiene?'}
+      </button>
       {help && (
-        <pre className="mt-2 overflow-x-auto rounded-lg bg-white p-3 text-xs text-ink shadow-3d-sm">{CSV_TEMPLATE}</pre>
+        <pre className="w-full overflow-x-auto rounded-lg bg-white p-3 text-xs text-ink shadow-3d-sm">{CSV_TEMPLATE}</pre>
       )}
-      {error && <p className="mt-2 rounded-lg bg-bad px-3 py-2 text-sm font-bold text-white">{error}</p>}
+      {error && <p className="w-full rounded-lg bg-bad px-3 py-2 text-sm font-bold text-white">{error}</p>}
     </div>
   );
 }
 
-function FieldError({ message }: { message?: string }) {
-  return message ? <p className="mt-1 text-sm font-semibold text-bad">{message}</p> : null;
+function FieldError({ message, onDark = false }: { message?: string; onDark?: boolean }) {
+  if (!message) return null;
+  return onDark ? (
+    <p className="mt-1 mb-3 inline-block rounded-lg bg-bad px-2 py-1 text-sm font-bold text-white">{message}</p>
+  ) : (
+    <p className="mt-1 text-sm font-semibold text-bad">{message}</p>
+  );
 }
 
 function IconButton(props: { label: string; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -539,7 +865,7 @@ function IconButton(props: { label: string; disabled?: boolean; onClick: () => v
       title={props.label}
       disabled={props.disabled}
       onClick={props.onClick}
-      className="grid size-8 place-items-center rounded-md border-2 border-transparent font-bold text-ink-soft hover:border-ink hover:text-ink disabled:opacity-25 disabled:hover:border-transparent"
+      className="grid size-8 place-items-center rounded-md border-2 border-transparent font-bold text-ink-soft hover:border-ink/30 hover:text-ink disabled:opacity-25 disabled:hover:border-transparent"
     >
       {props.children}
     </button>

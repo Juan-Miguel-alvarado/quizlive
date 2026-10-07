@@ -47,12 +47,19 @@ async function main() {
   const quiz = await fetch(`${URL}/api/quizzes`, {
     method: 'POST',
     headers: auth,
+    // Serie 1 (P1, P2), una serie vacía (se salta al jugar) y Serie 2 (P3).
     body: JSON.stringify({
       title: 'E2E',
-      questions: [
-        { type: 'single', text: 'P1', options: ['a', 'b', 'c', 'd'], correctIndices: [1], timeLimitSec: 5 },
-        { type: 'multiple', text: 'P2', options: ['a', 'b', 'c'], correctIndices: [0, 2], timeLimitSec: 5 },
-        { type: 'truefalse', text: 'P3', options: ['x', 'y'], correctIndices: [0], timeLimitSec: 5 },
+      series: [
+        {
+          title: 'Serie uno',
+          questions: [
+            { type: 'single', text: 'P1', options: ['a', 'b', 'c', 'd'], correctIndices: [1], timeLimitSec: 5 },
+            { type: 'multiple', text: 'P2', options: ['a', 'b', 'c'], correctIndices: [0, 2], timeLimitSec: 5 },
+          ],
+        },
+        { title: 'Todavía vacía', questions: [] },
+        { title: 'Serie dos', questions: [{ type: 'truefalse', text: 'P3', options: ['x', 'y'], correctIndices: [0], timeLimitSec: 5 }] },
       ],
     }),
   }).then((r) => r.json());
@@ -61,10 +68,17 @@ async function main() {
     headers: auth,
     body: JSON.stringify({
       title: 'Malo',
-      questions: [{ type: 'single', text: 'x', options: ['a', 'b'], correctIndices: [0, 1], timeLimitSec: 5 }],
+      series: [{ title: 'S', questions: [{ type: 'single', text: 'x', options: ['a', 'b'], correctIndices: [0, 1], timeLimitSec: 5 }] }],
     }),
   });
   check(bad.status === 400, 'opción única con dos correctas rechazada al guardar');
+  check(quiz.series?.length === 3 && quiz.pointsCorrect === 100 && quiz.speedBonusMax === 50, 'trivia con 3 series y puntaje por defecto');
+  const copy = await fetch(`${URL}/api/quizzes/${quiz.id}/duplicate`, { method: 'POST', headers: auth }).then((r) => r.json());
+  check(copy.title === 'E2E (copia)' && copy.series.length === 3, 'duplicar copia series y preguntas');
+  await fetch(`${URL}/api/quizzes/${copy.id}`, { method: 'PATCH', headers: auth, body: JSON.stringify({ title: 'Renombrada' }) });
+  const renamed = await fetch(`${URL}/api/quizzes/${copy.id}`, { headers: auth }).then((r) => r.json());
+  check(renamed.title === 'Renombrada', 'renombrar desde la lista');
+  await fetch(`${URL}/api/quizzes/${copy.id}`, { method: 'DELETE', headers: auth });
 
   // Sin clave de anfitrión no se puede tocar nada del anfitrión
   for (const [ruta, init] of [
@@ -122,7 +136,8 @@ async function playGame(pin: string, hostToken: string) {
   const q1 = once(p1, 'question:start');
   const tStart = Date.now();
   check((await emit(host, 'host:start')).ok, 'partida iniciada');
-  check((await cd).index === 0, 'cuenta regresiva antes de la primera pregunta');
+  const countdown1 = await cd;
+  check(countdown1.index === 0 && countdown1.series.title === 'Serie uno' && countdown1.series.total === 2, 'la cuenta muestra la serie (la vacía no cuenta)');
   const question = await q1;
   check(Date.now() - tStart >= 4500, 'la pregunta aparece al terminar la cuenta regresiva');
   check(!('correctIndices' in question), 'la pregunta NO incluye la respuesta correcta');
@@ -146,16 +161,22 @@ async function playGame(pin: string, hostToken: string) {
   const rv = await reveal;
   check(rv.correctIndices.join() === '1' && rv.distribution.join() === '0,1,0,1', 'revelación antes de tiempo al responder todos');
   const [res1, res2] = await Promise.all([r1, r2]);
-  check(res1.correct && res1.points > 900 && res1.rank === 1, `Ana acierta: +${res1.points}`);
+  check(res1.correct && res1.points > 100 && res1.points <= 150 && res1.rank === 1, `Ana acierta: +${res1.points} (100 + bono)`);
   check(!res2.correct && res2.points === 0 && res2.rank === 2, 'Beto falla: 0 pts');
 
-  const lb = once(host, 'game:leaderboard');
+  // Pantalla TV: recibe lo del anfitrión pero no puede dirigir
+  const tv = await connect();
+  const tvJoin = await emit(tv, 'screen:join', { pin });
+  check(tvJoin.ok && tvJoin.state.phase === 'reveal' && tvJoin.state.me === null, 'la pantalla TV se une y ve la partida');
+  check(!(await emit(tv, 'host:next')).ok, 'la pantalla TV no puede pasar preguntas');
+
+  // P1 no termina la serie: sin tabla, directo a la cuenta de P2
+  const cd2 = once(p1, 'question:countdown');
   await emit(host, 'host:next');
-  check((await lb).top[0]?.nickname === 'Ana', 'ranking entre preguntas');
+  check((await cd2).inSeries.index === 1, 'sin tabla entre preguntas de la misma serie');
 
   // --- Pregunta 2: Beto no responde, se cierra por tiempo ---
   const q2 = once(p1, 'question:start');
-  await emit(host, 'host:next');
   check((await emit(host, 'host:next')).ok, 'el anfitrión puede saltarse la cuenta regresiva');
   await q2;
   await emit(p1, 'player:answer', { questionIndex: 0, choices: [2] }).then((r) =>
@@ -169,11 +190,21 @@ async function playGame(pin: string, hostToken: string) {
   const rv2 = await reveal2;
   check(Date.now() - t0 > 4000, 'el temporizador del servidor cierra la pregunta');
   check((await r2p1).correct && rv2.distribution.join() === '1,0,1', 'selección múltiple: acierta marcando todas las correctas');
+  check(rv2.endsSeries === true, 'la revelación avisa que terminó la serie');
 
-  // --- Pregunta 3: verdadero/falso ---
+  // Fin de la Serie 1: tabla (también en la TV)
+  const lb = once(p1, 'game:leaderboard');
+  const lbTv = once(tv, 'game:leaderboard');
+  await emit(host, 'host:next');
+  const table = await lb;
+  check(table.top[0]?.nickname === 'Ana' && table.seriesEnd.series.index === 0 && !table.seriesEnd.isLast, 'tabla al final de la serie 1');
+  check((await lbTv).top.length === 2, 'la TV recibe la tabla');
+
+  // --- Pregunta 3 (Serie 2): verdadero/falso ---
   const q3 = once(p1, 'question:start');
-  await emit(host, 'host:next'); // ranking
-  await emit(host, 'host:next'); // cuenta regresiva
+  const cd3 = once(p1, 'question:countdown');
+  await emit(host, 'host:next'); // "Iniciar Serie 2" → cuenta regresiva
+  check((await cd3).series.title === 'Serie dos', 'la Serie 2 empieza (la vacía se saltó)');
   await emit(host, 'host:next'); // saltar cuenta
   const question3 = await q3;
   check(question3.type === 'truefalse' && question3.options.join() === 'Verdadero,Falso', 'V/F con opciones fijas');
@@ -183,16 +214,22 @@ async function playGame(pin: string, hostToken: string) {
   await emit(p2b, 'player:answer', { questionIndex: 2, choices: [0] });
   check((await r3).correct, 'Beto acierta el V/F');
 
-  const podium = once(p2b, 'game:podium');
+  const lbFinal = once(host, 'game:leaderboard');
   await emit(host, 'host:next');
+  check((await lbFinal).seriesEnd.isLast, 'tabla de la última serie antes del ganador');
+
+  const podium = once(p2b, 'game:podium');
+  const podiumTv = once(tv, 'game:podium');
+  await emit(host, 'host:next'); // "Ver ganador"
   const pd = await podium;
+  check((await podiumTv).top[0]?.nickname === 'Ana', 'la TV muestra el ganador');
   check(pd.top.length === 2 && pd.me?.rank === 2, 'podio final con puesto propio');
 
   await sleep(500);
   const late = await connect();
   check(!(await emit(late, 'player:join', { pin, nickname: 'Tarde' })).ok, 'no se puede unir a una partida terminada');
 
-  for (const s of [host, p1, p2b, p3, late]) s.disconnect();
+  for (const s of [host, p1, p2b, p3, late, tv]) s.disconnect();
 }
 
 main().catch((err) => {

@@ -3,7 +3,7 @@ import type { Server, Socket } from 'socket.io';
 
 export interface SocketData {
   pin?: string;
-  role?: 'host' | 'player';
+  role?: 'host' | 'player' | 'screen'; // screen = pantalla TV: solo mira
   playerId?: string;
 }
 

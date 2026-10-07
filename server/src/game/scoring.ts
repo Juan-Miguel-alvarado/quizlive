@@ -1,27 +1,32 @@
-export const MAX_POINTS = 1000;
-export const STREAK_BONUS = 100; // por cada acierto seguido a partir del segundo
-export const MAX_STREAK_BONUS = 500;
-
-/** Bonus por aciertos seguidos: 2 seguidos = +100, 3 = +200… hasta +500. */
-export function streakBonus(streak: number): number {
-  return Math.min(MAX_STREAK_BONUS, Math.max(0, streak - 1) * STREAK_BONUS);
+export interface ScoringRules {
+  /** Puntos fijos por acertar. */
+  base: number;
+  /** Bono máximo por rapidez: completo si responde al instante, 0 en el último instante. */
+  bonus: number;
 }
 
-/** Acierto inmediato = 1000 pts; acierto en el último instante = 500 pts; error = 0. */
-export function computePoints(correct: boolean, responseMs: number, timeLimitMs: number): number {
+export const DEFAULT_SCORING: ScoringRules = { base: 100, bonus: 50 };
+
+/** Acierto = puntos fijos + bono lineal según la rapidez; error o sin responder = 0. */
+export function computePoints(correct: boolean, responseMs: number, timeLimitMs: number, rules = DEFAULT_SCORING): number {
   if (!correct) return 0;
   const ratio = Math.min(Math.max(responseMs / timeLimitMs, 0), 1);
-  return Math.round(MAX_POINTS * (1 - ratio / 2));
+  return rules.base + Math.round(rules.bonus * (1 - ratio));
 }
 
-/** Ranking de competición: empates comparten puesto (1, 1, 3…). */
-export function rankPlayers<T extends { score: number; nickname: string }>(players: T[]) {
-  const sorted = [...players].sort((a, b) => b.score - a.score || a.nickname.localeCompare(b.nickname));
-  let prevScore = Number.NaN;
+/**
+ * Ranking de competición: más puntos primero y, si empatan, quien tardó menos en total. Solo
+ * comparten puesto si empatan en las dos cosas (1, 1, 3…).
+ */
+export function rankPlayers<T extends { score: number; totalMs: number; nickname: string }>(players: T[]) {
+  const sorted = [...players].sort(
+    (a, b) => b.score - a.score || a.totalMs - b.totalMs || a.nickname.localeCompare(b.nickname),
+  );
+  let prev: T | null = null;
   let prevRank = 0;
   return sorted.map((p, i) => {
-    const rank = p.score === prevScore ? prevRank : i + 1;
-    prevScore = p.score;
+    const rank = prev && p.score === prev.score && p.totalMs === prev.totalMs ? prevRank : i + 1;
+    prev = p;
     prevRank = rank;
     return { player: p, rank };
   });

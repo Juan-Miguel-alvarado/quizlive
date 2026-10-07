@@ -64,12 +64,12 @@ async function main() {
     headers: auth,
     body: JSON.stringify({
       title: `Carga ${N}`,
-      questions: Array.from({ length: QUESTIONS }, (_, i) => ({
-        type: 'single',
-        text: `Pregunta ${i + 1}`,
-        options: ['a', 'b', 'c', 'd'],
-        correctIndices: [i % 4],
-        timeLimitSec: 20,
+      // Una serie por pregunta: así la tabla (el momento más pesado) sale después de cada una.
+      series: Array.from({ length: QUESTIONS }, (_, i) => ({
+        title: `Serie ${i + 1}`,
+        questions: [
+          { type: 'single', text: `Pregunta ${i + 1}`, options: ['a', 'b', 'c', 'd'], correctIndices: [i % 4], timeLimitSec: 20 },
+        ],
       })),
     }),
   }).then((r) => r.json());
@@ -150,10 +150,11 @@ async function main() {
     }
 
     if (FINISH) {
+      await host.emitWithAck('host:next'); // tabla de la última serie
       const podium = allReceive(everyone, 'game:podium');
       const tP = Date.now();
       await host.emitWithAck('host:next');
-      console.log(`\npodio a todos: ${Math.max(...(await podium)) - tP} ms (resultados guardados en la base de datos)`);
+      console.log(`\nganador a todos: ${Math.max(...(await podium)) - tP} ms (resultados guardados en la base de datos)`);
     }
     for (const s of everyone) s.disconnect();
   } finally {

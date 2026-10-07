@@ -7,10 +7,10 @@
 ## 1. Entra
 
 📷 **Abre la cámara** del celular y apunta al **código cuadrado** de la pantalla grande.
-Toca el enlace que aparece.
+Toca el enlace que aparece. **O toca el link** que te mandaron por WhatsApp.
 
-> ¿No te funciona la cámara? Escribe en el navegador la dirección que se ve en la pantalla
-> (termina con 6 números).
+> ¿No te funciona la cámara? Escribe en el navegador **quizlivee.vercel.app** y luego el
+> **número de 6 cifras** que se ve en la pantalla.
 
 ## 2. Elige tu dibujo y tu nombre
 
@@ -37,7 +37,11 @@ Toca **¡Jugar!** Listo, ya estás dentro. Busca tu nombre en la pantalla grande
 ✅ Pantalla **verde**: ¡acertaste!
 ❌ Pantalla **roja**: esta vez no.
 
-Después aparece una explicación o un versículo 💡.
+Tu celular te dice **cuál era la correcta** y luego aparece una explicación o un versículo 💡.
+
+## 5. Al final de cada serie
+
+🏆 Sale el **top 5** y tu puesto («Vas en el puesto 8 con 450 puntos»). Al final del juego, el **ganador**.
 
 ---
 

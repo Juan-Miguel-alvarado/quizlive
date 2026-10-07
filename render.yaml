@@ -22,7 +22,8 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       - key: CLIENT_ORIGIN
-        value: https://quizlivee.netlify.app,http://localhost:5173
+        # Vercel (el link que usa la gente) y Netlify (el anterior, por si alguien tiene el link viejo)
+        value: https://quizlivee.vercel.app,https://quizlivee.netlify.app,http://localhost:5173
 
 databases:
   - name: quizlivee-db

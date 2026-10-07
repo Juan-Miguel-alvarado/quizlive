@@ -16,21 +16,37 @@ export function gamesRouter(games: GameManager) {
       select: {
         id: true,
         title: true,
-        questions: {
+        pointsCorrect: true,
+        speedBonusMax: true,
+        series: {
           orderBy: { order: 'asc' },
-          select: { type: true, text: true, imageId: true, options: true, correctIndices: true, timeLimitSec: true, explanation: true },
+          select: {
+            title: true,
+            questions: {
+              orderBy: { order: 'asc' },
+              select: { type: true, text: true, imageId: true, options: true, correctIndices: true, timeLimitSec: true, explanation: true },
+            },
+          },
         },
       },
     });
     if (!quiz) {
-      res.status(404).json({ error: 'Quiz no encontrado' });
+      res.status(404).json({ error: 'Trivia no encontrada' });
       return;
     }
-    if (quiz.questions.length === 0) {
-      res.status(400).json({ error: 'El quiz no tiene preguntas' });
+    // Las series vacías (todavía en preparación) se saltan al jugar.
+    const series = quiz.series.filter((s) => s.questions.length > 0);
+    if (series.length === 0) {
+      res.status(400).json({ error: 'La trivia no tiene preguntas' });
       return;
     }
-    const game = games.create(quiz);
+    const game = games.create({
+      id: quiz.id,
+      title: quiz.title,
+      scoring: { base: quiz.pointsCorrect, bonus: quiz.speedBonusMax },
+      series: series.map((s) => ({ title: s.title })),
+      questions: series.flatMap((s, seriesIndex) => s.questions.map((q) => ({ ...q, seriesIndex }))),
+    });
     res.status(201).json({ pin: game.pin, hostToken: game.hostToken } satisfies CreateGameResponse);
   });
 

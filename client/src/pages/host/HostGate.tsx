@@ -6,7 +6,7 @@ import { api } from '../../lib/api';
 import { hostSession } from '../../lib/session';
 import { useServerWakeup } from '../../lib/useServerWakeup';
 
-/** Envuelve todo /host: sin la clave de anfitrión no se ven ni se tocan los quizzes. */
+/** Envuelve todo /host: sin la clave de anfitrión no se ven ni se tocan las trivias. */
 export default function HostGate() {
   const [status, setStatus] = useState<'checking' | 'in' | 'out'>(hostSession.get() ? 'checking' : 'out');
   const [password, setPassword] = useState('');
@@ -78,7 +78,7 @@ export default function HostGate() {
           </p>
         )}
         <p className="mt-4 text-sm text-ink-soft">
-          Solo hace falta para crear quizzes y dirigir partidas. Para jugar, tus compañeros no necesitan nada.
+          Solo hace falta para preparar las trivias y dirigir el juego. Los participantes no necesitan nada.
         </p>
       </form>
     </main>

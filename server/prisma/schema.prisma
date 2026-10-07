@@ -8,12 +8,28 @@ datasource db {
 }
 
 model Quiz {
+  id            String     @id @default(cuid())
+  title         String
+  // Puntaje: puntos fijos por acertar + bono por rapidez (de bono completo al instante a 0 al final).
+  pointsCorrect Int        @default(100)
+  speedBonusMax Int        @default(50)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  series        Series[]
+  questions     Question[]
+  games         Game[]
+}
+
+// Grupo de preguntas dentro de una trivia (p. ej. "¿Quién dijo?"). Al final de cada serie se ve el top 5.
+model Series {
   id        String     @id @default(cuid())
+  quizId    String
+  quiz      Quiz       @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  order     Int
   title     String
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
   questions Question[]
-  games     Game[]
+
+  @@unique([quizId, order])
 }
 
 enum QuestionType {
@@ -26,7 +42,9 @@ model Question {
   id             String       @id @default(cuid())
   quizId         String
   quiz           Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  order          Int
+  seriesId       String
+  series         Series       @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  order          Int // orden global dentro de la trivia (el historial lo usa como número de pregunta)
   type           QuestionType @default(single)
   text           String
   imageId        String?

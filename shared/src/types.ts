@@ -1,16 +1,16 @@
-import type { QuestionInput } from './schemas';
+import type { QuestionInput, QuizInput } from './schemas';
 
 export interface QuizSummary {
   id: string;
   title: string;
+  seriesCount: number;
   questionCount: number;
   updatedAt: string;
 }
 
-export interface QuizDetail {
+export interface QuizDetail extends Pick<QuizInput, 'title' | 'pointsCorrect' | 'speedBonusMax'> {
   id: string;
-  title: string;
-  questions: (QuestionInput & { id: string })[];
+  series: { id: string; title: string; questions: (QuestionInput & { id: string })[] }[];
 }
 
 export interface LoginResponse {

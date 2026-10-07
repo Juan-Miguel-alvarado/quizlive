@@ -63,3 +63,36 @@ export function CountdownCircle({ endsAt, clockOffset, totalSec, size = 'lg', au
     </div>
   );
 }
+
+/**
+ * Tiempo restante para la TV: número enorme y una barra que se vacía, en rojo los últimos 5 s.
+ * Suena un tic por segundo en los últimos 5 (solo la pantalla que proyecta tiene sonido).
+ */
+export function TimerBar({ endsAt, clockOffset, totalSec }: { endsAt: number; clockOffset: number; totalSec: number }) {
+  const remaining = useRemainingMs(endsAt, clockOffset);
+  const lastTick = useRef(0);
+  const seconds = Math.ceil(remaining / 1000);
+  useEffect(() => {
+    if (seconds > 5 || seconds <= 0 || lastTick.current === seconds) return;
+    lastTick.current = seconds;
+    sound.tick();
+  }, [seconds]);
+  const urgent = remaining <= 5000;
+  return (
+    <div className="flex items-center gap-5" role="timer" aria-label={`${seconds} segundos`}>
+      <span
+        className={`grid size-24 shrink-0 place-items-center rounded-full text-6xl font-black tabular-nums shadow-3d-lg xl:size-32 xl:text-7xl short:size-20 short:text-5xl ${
+          urgent ? 'animate-[pulse-ring_1s_ease-in-out_infinite] bg-bad text-white' : 'bg-white text-stage-dark'
+        }`}
+      >
+        {seconds}
+      </span>
+      <div className="h-6 flex-1 overflow-hidden rounded-full bg-black/30 xl:h-8">
+        <div
+          className={`h-full rounded-full transition-[width] duration-100 ease-linear ${urgent ? 'bg-bad' : 'bg-white'}`}
+          style={{ width: `${(remaining / (totalSec * 1000)) * 100}%` }}
+        />
+      </div>
+    </div>
+  );
+}

@@ -68,6 +68,9 @@ export const api = {
   updateQuiz: (id: string, input: QuizInput) =>
     request<QuizDetail>(`/quizzes/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
   deleteQuiz: (id: string) => request<void>(`/quizzes/${id}`, { method: 'DELETE' }),
+  renameQuiz: (id: string, title: string) =>
+    request<void>(`/quizzes/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) }),
+  duplicateQuiz: (id: string) => request<QuizDetail>(`/quizzes/${id}/duplicate`, { method: 'POST' }),
   createGame: (quizId: string) =>
     request<CreateGameResponse>('/games', { method: 'POST', body: JSON.stringify({ quizId }) }),
   getGame: (pin: string) => request<{ pin: string; quizTitle: string }>(`/games/${pin}`),

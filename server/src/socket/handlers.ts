@@ -5,6 +5,7 @@ import {
   playerJoinSchema,
   playerReactSchema,
   playerRejoinSchema,
+  screenJoinSchema,
   type AckResponse,
 } from '@quiz/shared';
 import type { z } from 'zod';
@@ -92,6 +93,15 @@ export function registerSocketHandlers(io: TypedServer, games: GameManager) {
         const game = findGame(pin);
         leaveCurrentGame();
         return { state: game.attachHost(socket, hostToken) };
+      }),
+    );
+    // --- Pantalla TV (solo mira: recibe lo del anfitrión pero hostGame() no la deja controlar) ---
+    socket.on('screen:join', (payload, ack) =>
+      respond(ack, () => {
+        const { pin } = parse(screenJoinSchema, payload);
+        const game = findGame(pin);
+        leaveCurrentGame();
+        return { state: game.attachScreen(socket) };
       }),
     );
     socket.on('host:start', (ack) => respond(ack, () => hostGame().start()));

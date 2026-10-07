@@ -117,7 +117,7 @@ historyRouter.post('/:id/retry', async (req, res) => {
     select: { id: true, quizId: true, quizTitle: true, pin: true, startedAt: true, finishedAt: true, ...gameWithAnswers },
   });
   if (!game?.quizId) {
-    res.status(404).json({ error: 'El quiz original ya no existe' });
+    res.status(404).json({ error: 'La trivia original ya no existe' });
     return;
   }
   const { questions } = buildReport(game);
@@ -137,15 +137,20 @@ historyRouter.post('/:id/retry', async (req, res) => {
   });
   const failed = (original?.questions ?? []).filter((q) => failedOrders.has(q.order));
   if (failed.length === 0) {
-    res.status(400).json({ error: 'El quiz original cambió y ya no tiene esas preguntas' });
+    res.status(400).json({ error: 'La trivia original cambió y ya no tiene esas preguntas' });
     return;
   }
-  const quiz = await prisma.quiz.create({
-    data: {
-      title: `${game.quizTitle} — repaso`,
-      questions: { create: failed.map(({ order: _order, ...q }, i) => ({ ...q, order: i })) },
-    },
-    select: { id: true, title: true },
+  const quiz = await prisma.$transaction(async (tx) => {
+    const created = await tx.quiz.create({ data: { title: `${game.quizTitle} — repaso` }, select: { id: true, title: true } });
+    await tx.series.create({
+      data: {
+        quizId: created.id,
+        order: 0,
+        title: 'Repaso',
+        questions: { create: failed.map(({ order: _order, ...q }, i) => ({ ...q, quizId: created.id, order: i })) },
+      },
+    });
+    return created;
   });
   res.status(201).json(quiz);
 });

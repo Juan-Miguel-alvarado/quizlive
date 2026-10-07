@@ -4,20 +4,28 @@ import type {
   CountdownView,
   GamePhase,
   GameSnapshot,
+  InSeries,
   PlayerPublic,
   QuestionView,
   RevealView,
   ScoreEntry,
+  SeriesEndView,
+  SeriesInfo,
 } from '@quiz/shared';
 import { QUESTION_COUNTDOWN_SEC, randomAvatar, type Avatar, type QuestionType, type Reaction } from '@quiz/shared';
 import { prisma } from '../lib/prisma';
 import type { TypedServer, TypedSocket } from '../socket/types';
-import { computePoints, rankPlayers, streakBonus } from './scoring';
+import { computePoints, rankPlayers, type ScoringRules } from './scoring';
 
 export interface GameQuiz {
   id: string;
   title: string;
+  scoring: ScoringRules;
+  /** Solo las series con preguntas, en orden. */
+  series: { title: string }[];
+  /** Todas las preguntas en orden; `seriesIndex` apunta a `series`. */
   questions: {
+    seriesIndex: number;
     type: QuestionType;
     text: string;
     imageId: string | null;
@@ -31,8 +39,7 @@ export interface GameQuiz {
 interface AnswerRecord {
   choices: number[]; // vacío = no respondió
   correct: boolean;
-  points: number; // incluye el bonus por racha
-  bonus: number;
+  points: number; // fijos + bono por rapidez
   streak: number;
   responseMs: number | null;
 }
@@ -45,7 +52,8 @@ interface Player {
   score: number;
   socketId: string | null;
   lastReactionAt: number;
-  streak: number; // aciertos seguidos
+  streak: number; // aciertos seguidos (solo para mostrar)
+  totalMs: number; // tiempo total respondiendo: desempata (sin responder cuenta el tiempo completo)
   answers: (AnswerRecord | undefined)[]; // indexado por número de pregunta
 }
 
@@ -53,7 +61,8 @@ interface Player {
 export class GameError extends Error {}
 
 const MAX_PLAYERS = 200;
-const HOST_GRACE_MS = 5 * 60_000;
+// Generoso: el moderador puede dirigir desde el celular y bloquearlo un rato sin cerrar la partida.
+const HOST_GRACE_MS = 30 * 60_000;
 const FINISHED_TTL_MS = 10 * 60_000;
 // Con 200 jugadores entrando o respondiendo a la vez, el anfitrión recibe como mucho
 // una actualización de la lista y del contador cada este intervalo (no una por jugador).
@@ -76,6 +85,7 @@ export class Game {
   private lifecycleTimer?: NodeJS.Timeout;
   private hostUpdateTimer?: NodeJS.Timeout;
   private previousRanks = new Map<string, number>(); // para las flechas de la clasificación
+  private seriesTop: ScoreEntry[] = []; // la tabla mostrada al terminar la serie (para quien se reconecte)
   private pendingHostUpdates = new Set<'players' | 'progress' | 'reactions'>();
   private pendingReactions = new Map<Reaction, number>();
   private startedAt: Date | null = null;
@@ -110,6 +120,28 @@ export class Game {
     return this.index >= this.quiz.questions.length - 1;
   }
 
+  /** La pregunta `index` es la última de su serie (lo siguiente es la tabla). */
+  private endsSeries(index: number) {
+    const q = this.quiz.questions[index];
+    const next = this.quiz.questions[index + 1];
+    return !!q && (!next || next.seriesIndex !== q.seriesIndex);
+  }
+
+  private seriesInfo(index: number): SeriesInfo {
+    const seriesIndex = this.quiz.questions[index]?.seriesIndex ?? 0;
+    return { index: seriesIndex, total: this.quiz.series.length, title: this.quiz.series[seriesIndex]?.title ?? '' };
+  }
+
+  private inSeries(index: number): InSeries {
+    const seriesIndex = this.quiz.questions[index]?.seriesIndex;
+    const inThisSeries = this.quiz.questions.flatMap((q, i) => (q.seriesIndex === seriesIndex ? [i] : []));
+    return { index: inThisSeries.indexOf(index), total: inThisSeries.length };
+  }
+
+  private seriesEndView(): SeriesEndView {
+    return { series: this.seriesInfo(this.index), isLast: this.isLastQuestion };
+  }
+
   // ---------- Anfitrión ----------
 
   isHost(socketId: string) {
@@ -125,6 +157,13 @@ export class Game {
     socket.data = { pin: this.pin, role: 'host' };
     socket.join([this.room, this.hostRoom]);
     if (this.phase !== 'podium') this.clearLifecycleTimer();
+    return this.snapshot(null);
+  }
+
+  /** Pantalla TV: recibe lo mismo que el anfitrión pero no puede controlar nada. Puede haber varias. */
+  attachScreen(socket: TypedSocket): GameSnapshot {
+    socket.data = { pin: this.pin, role: 'screen' };
+    socket.join([this.room, this.hostRoom]);
     return this.snapshot(null);
   }
 
@@ -153,10 +192,12 @@ export class Game {
         return this.startQuestion(this.index + 1);
       case 'question':
         return this.endQuestion();
+      // Al terminar una serie se muestra su tabla; si no, se sigue con la siguiente pregunta.
       case 'reveal':
-        return this.isLastQuestion ? this.finish() : this.showLeaderboard();
+        return this.endsSeries(this.index) ? this.showLeaderboard() : this.startCountdown();
+      // Después de la tabla: la siguiente serie o, si era la última, el ganador.
       case 'leaderboard':
-        return this.startCountdown();
+        return this.isLastQuestion ? this.finish() : this.startCountdown();
       case 'podium':
         throw new GameError('La partida ya terminó');
     }
@@ -185,6 +226,7 @@ export class Game {
     for (const p of this.players.values()) {
       p.score = 0;
       p.streak = 0;
+      p.totalMs = 0;
       p.answers = [];
     }
     this.armLifecycleTimer(HOST_GRACE_MS, 'La partida se quedó sin anfitrión');
@@ -222,6 +264,7 @@ export class Game {
       socketId: null,
       lastReactionAt: 0,
       streak: 0,
+      totalMs: 0,
       answers: [],
     };
     this.players.set(player.id, player);
@@ -281,8 +324,7 @@ export class Game {
     player.answers[this.index] = {
       choices: [...choices].sort((a, b) => a - b),
       correct,
-      points: computePoints(correct, responseMs, q.timeLimitSec * 1000),
-      bonus: 0, // el bonus por racha se calcula al cerrar la pregunta
+      points: computePoints(correct, responseMs, q.timeLimitSec * 1000, this.quiz.scoring),
       streak: 0,
       responseMs,
     };
@@ -319,21 +361,19 @@ export class Game {
     if (this.phase !== 'question') return;
     clearTimeout(this.phaseTimer);
     this.phase = 'reveal';
-    this.previousRanks = this.ranks();
+    const limitMs = this.currentQuestion!.timeLimitSec * 1000;
     for (const p of this.players.values()) {
       const a = (p.answers[this.index] ??= {
         choices: [],
         correct: false,
         points: 0,
-        bonus: 0,
         streak: 0,
         responseMs: null,
       });
       p.streak = a.correct ? p.streak + 1 : 0;
       a.streak = p.streak;
-      a.bonus = a.correct ? streakBonus(p.streak) : 0;
-      a.points += a.bonus;
       p.score += a.points;
+      p.totalMs += a.responseMs ?? limitMs;
     }
     this.io.to(this.room).emit('question:reveal', this.revealView()!);
     const ranks = this.ranks();
@@ -342,16 +382,19 @@ export class Game {
     }
   }
 
+  /** Tabla de fin de serie. Las flechas comparan con la tabla de la serie anterior. */
   private showLeaderboard() {
     this.phase = 'leaderboard';
-    this.io.to(this.room).emit('game:leaderboard', { top: this.top(5) });
+    this.seriesTop = this.top(5);
+    this.io.to(this.room).emit('game:leaderboard', { top: this.seriesTop, seriesEnd: this.seriesEndView() });
+    this.previousRanks = this.ranks();
   }
 
   private finish() {
     this.phase = 'podium';
     const ranks = this.ranks();
     const top = this.top(3, ranks);
-    if (this.hostSocketId) this.io.to(this.hostSocketId).emit('game:podium', { top, me: null });
+    this.io.to(this.hostRoom).emit('game:podium', { top, me: null }); // anfitrión y pantallas TV
     for (const p of this.players.values()) {
       if (p.socketId) {
         this.io.to(p.socketId).emit('game:podium', { top, me: { score: p.score, rank: ranks.get(p.id) ?? 0 } });
@@ -382,13 +425,15 @@ export class Game {
       pin: this.pin,
       quizTitle: this.quiz.title,
       totalQuestions: this.quiz.questions.length,
+      seriesCount: this.quiz.series.length,
       phase: this.phase,
       players: player ? [] : this.publicPlayers(), // los celulares no muestran la lista
       countdown: this.phase === 'countdown' ? this.countdownView() : null,
       question: inQuestion ? this.questionView() : null,
       answeredCount: this.answeredCount(),
       reveal: this.phase === 'reveal' ? this.revealView() : null,
-      leaderboard: this.phase === 'leaderboard' ? this.top(5, ranks) : null,
+      leaderboard: this.phase === 'leaderboard' ? this.seriesTop : null,
+      seriesEnd: this.phase === 'leaderboard' ? this.seriesEndView() : null,
       podium: this.phase === 'podium' ? this.top(3, ranks) : null,
       me: player
         ? {
@@ -405,10 +450,13 @@ export class Game {
   }
 
   private countdownView(): CountdownView {
+    const next = this.index + 1;
     return {
-      index: this.index + 1,
+      index: next,
       total: this.quiz.questions.length,
-      type: this.quiz.questions[this.index + 1]!.type,
+      type: this.quiz.questions[next]!.type,
+      series: this.seriesInfo(next),
+      inSeries: this.inSeries(next),
       endsAt: this.countdownEndsAt,
       serverNow: Date.now(),
     };
@@ -421,6 +469,8 @@ export class Game {
       index: this.index,
       total: this.quiz.questions.length,
       type: q.type,
+      series: this.seriesInfo(this.index),
+      inSeries: this.inSeries(this.index),
       text: q.text,
       imageId: q.imageId,
       options: q.options,
@@ -437,7 +487,13 @@ export class Game {
     for (const p of this.players.values()) {
       for (const c of p.answers[this.index]?.choices ?? []) distribution[c]!++;
     }
-    return { index: this.index, correctIndices: q.correctIndices, distribution, explanation: q.explanation };
+    return {
+      index: this.index,
+      correctIndices: q.correctIndices,
+      distribution,
+      explanation: q.explanation,
+      endsSeries: this.endsSeries(this.index),
+    };
   }
 
   private resultFor(p: Player, ranks: Map<string, number>): AnswerResult {
@@ -447,7 +503,6 @@ export class Game {
       correct: a?.correct ?? false,
       points: a?.points ?? 0,
       streak: a?.streak ?? 0,
-      streakBonus: a?.bonus ?? 0,
       totalScore: p.score,
       rank: ranks.get(p.id) ?? 0,
     };

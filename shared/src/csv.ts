@@ -1,4 +1,4 @@
-import { MAX_OPTIONS, TRUE_FALSE_OPTIONS } from './schemas';
+import { DEFAULT_TIME_LIMIT, MAX_OPTIONS, TRUE_FALSE_OPTIONS } from './schemas';
 import type { QuestionInput, QuestionType } from './schemas';
 
 export const CSV_TEMPLATE =
@@ -75,7 +75,7 @@ export function parseQuizCsv(text: string): CsvResult {
     const hasExplanation = cells.length >= 9;
     const tail = hasExplanation ? cells.slice(6, 8) : cells.slice(-2);
     const rawCorrect = (tail[0] ?? '').toLowerCase();
-    const timeLimitSec = Number(tail[1]) || 20;
+    const timeLimitSec = Number(tail[1]) || DEFAULT_TIME_LIMIT;
     const explanation = hasExplanation ? cells.slice(8).join(`${sep} `).trim().slice(0, 300) || null : null;
     const options =
       type === 'truefalse' ? [...TRUE_FALSE_OPTIONS] : cells.slice(2, 2 + MAX_OPTIONS).filter(Boolean);

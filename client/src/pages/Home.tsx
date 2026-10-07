@@ -201,7 +201,7 @@ export default function Home() {
 
       <footer className="mx-auto w-full max-w-sm pt-8 text-sm">
         <Link to="/host" className="inline-flex items-center gap-1 text-stage-soft underline-offset-4 hover:text-white hover:underline">
-          ¿Vas a dirigir la partida? Crea un quiz
+          ¿Vas a dirigir la trivia? Entra aquí
           <ArrowRight />
         </Link>
       </footer>
