@@ -1,6 +1,6 @@
 import { QUESTION_COUNTDOWN_SEC, type CountdownView } from '@quiz/shared';
 import { CountdownCircle } from './Countdown';
-import { QUESTION_TYPE_LABELS } from './OptionShape';
+import { QUESTION_TYPE_HINTS } from './OptionShape';
 
 /** Pantalla de espera entre preguntas (anfitrión y jugadores). */
 export function GetReady({ countdown, clockOffset, size }: {
@@ -11,17 +11,21 @@ export function GetReady({ countdown, clockOffset, size }: {
   const big = size === 'lg';
   return (
     <div className="flex flex-1 animate-[pop_300ms_both] flex-col items-center justify-center gap-5 text-center">
-      <p className={`font-mono font-bold text-ink-soft ${big ? 'text-lg sm:text-2xl' : 'text-sm'}`}>
-        {String(countdown.index + 1).padStart(2, '0')} / {String(countdown.total).padStart(2, '0')}
+      <div className={`w-full ${big ? 'max-w-xl' : 'max-w-xs'}`}>
+        <p className={`font-bold text-stage-soft ${big ? 'text-lg sm:text-2xl' : 'text-base'}`}>
+          Pregunta {countdown.index + 1} de {countdown.total}
+        </p>
+        <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-black/25">
+          <div
+            className="h-full rounded-full bg-white"
+            style={{ width: `${((countdown.index + 1) / countdown.total) * 100}%` }}
+          />
+        </div>
+      </div>
+      <p className={`font-black tracking-tight drop-shadow ${big ? 'text-5xl sm:text-7xl xl:text-8xl' : 'text-5xl'}`}>
+        ¡Prepárate!
       </p>
-      <p className={`font-extrabold tracking-tight ${big ? 'text-5xl sm:text-7xl xl:text-8xl' : 'text-4xl'}`}>
-        Atentos
-      </p>
-      <p
-        className={`rounded-full border-2 border-ink bg-white px-4 py-1 font-semibold ${big ? 'text-lg sm:text-xl' : 'text-sm'}`}
-      >
-        {QUESTION_TYPE_LABELS[countdown.type]}
-      </p>
+      <p className={`pill ${big ? 'text-lg sm:text-2xl' : 'text-base'}`}>{QUESTION_TYPE_HINTS[countdown.type]}</p>
       <CountdownCircle endsAt={countdown.endsAt} clockOffset={clockOffset} totalSec={QUESTION_COUNTDOWN_SEC} />
     </div>
   );

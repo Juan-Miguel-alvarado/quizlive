@@ -12,6 +12,13 @@ import { hostSession } from './session';
 
 export const SERVER_URL = import.meta.env.VITE_SERVER_URL || '';
 
+/**
+ * Dirección que se anuncia a los jugadores (QR y enlace corto del lobby). En Netlify es
+ * https://quizlivee.netlify.app; en desarrollo, la de la propia página (los celulares deben
+ * llegar al mismo servidor local).
+ */
+export const PUBLIC_URL = (import.meta.env.VITE_PUBLIC_URL || window.location.origin).replace(/\/$/, '');
+
 export class ApiRequestError extends Error {
   constructor(
     message: string,
@@ -52,6 +59,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  /** Sirve también para despertar el servidor (Render gratis se duerme): ver useServerWakeup. */
+  health: () => request<{ ok: boolean }>('/health'),
   listQuizzes: () => request<QuizSummary[]>('/quizzes'),
   getQuiz: (id: string) => request<QuizDetail>(`/quizzes/${id}`),
   createQuiz: (input: QuizInput) =>

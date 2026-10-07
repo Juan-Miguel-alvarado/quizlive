@@ -5,6 +5,12 @@
 let ctx: AudioContext | null = null;
 let muted = false;
 
+/** Contexto de audio compartido con la música (lib/music.ts): un solo desbloqueo para los dos. */
+export function getAudioContext(): AudioContext {
+  ctx ??= new AudioContext();
+  return ctx;
+}
+
 try {
   muted = localStorage.getItem('quizlive:muted') === '1';
 } catch {
@@ -24,11 +30,16 @@ export const sound = {
     }
     return muted;
   },
-  /** Los navegadores exigen un gesto del usuario antes de dejar sonar nada. */
+  /**
+   * Los navegadores exigen un gesto del usuario antes de dejar sonar nada. Se desbloquea aunque los
+   * efectos estén silenciados, porque la música usa el mismo contexto.
+   */
   unlock() {
-    if (muted) return;
-    ctx ??= new AudioContext();
-    void ctx.resume();
+    try {
+      void getAudioContext().resume();
+    } catch {
+      /* navegador sin WebAudio */
+    }
   },
   tick: () => beep([{ freq: 880, at: 0, dur: 0.06, gain: 0.12 }]),
   questionStart: () => beep([{ freq: 660, at: 0, dur: 0.12 }, { freq: 990, at: 0.1, dur: 0.16 }]),
@@ -55,7 +66,7 @@ interface Note {
 function beep(notes: Note[]) {
   if (muted) return;
   try {
-    ctx ??= new AudioContext();
+    const ctx = getAudioContext();
     if (ctx.state === 'suspended') void ctx.resume();
     for (const n of notes) {
       const osc = ctx.createOscillator();

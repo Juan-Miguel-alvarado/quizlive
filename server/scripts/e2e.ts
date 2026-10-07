@@ -100,12 +100,20 @@ async function playGame(pin: string, hostToken: string) {
 
   const [p1, p2, p3] = await Promise.all([connect(), connect(), connect()]);
   const lobby = once(host, 'lobby:players');
-  const j1 = await emit(p1, 'player:join', { pin, nickname: '  Ana  ' });
+  const j1 = await emit(p1, 'player:join', { pin, nickname: '  Ana  ', avatar: '🦁' });
   check(j1.ok && j1.state.me.nickname === 'Ana', 'Ana se une (apodo recortado)');
-  check((await lobby).players.length === 1, 'anfitrión recibe lobby:players');
+  check(j1.ok && j1.state.me.avatar === '🦁', 'Ana conserva el avatar que eligió');
+  const lobbyPlayers = (await lobby).players;
+  check(lobbyPlayers.length === 1 && lobbyPlayers[0]!.avatar === '🦁', 'anfitrión recibe lobby:players con avatar');
+  check(!(await emit(p1, 'player:join', { pin, nickname: 'X', avatar: '🚀' })).ok, 'avatar fuera de la lista rechazado');
+  const reacted = once(host, 'host:reactions');
+  p1.emit('player:react', { emoji: '🙏' });
+  check((await reacted).counts['🙏'] === 1, 'la reacción del jugador llega al anfitrión');
   const j2 = await emit(p2, 'player:join', { pin, nickname: 'Beto' });
   check(j2.ok, 'Beto se une');
-  check(!(await emit(p3, 'player:join', { pin, nickname: 'ANA' })).ok, 'apodo duplicado rechazado');
+  const dup = await emit(p3, 'player:join', { pin, nickname: 'ANA' });
+  check(dup.ok && dup.state.me.nickname === 'ANA 2', 'apodo duplicado numerado en vez de rechazado');
+  check(dup.ok && (await emit(host, 'host:kick', { playerId: dup.playerId })).ok, 'el anfitrión expulsa al duplicado');
   check(!(await emit(p3, 'player:join', { pin: '12', nickname: 'X' })).ok, 'PIN mal formado rechazado (zod)');
   check(!(await emit(p1, 'host:start')).ok, 'un jugador no puede usar eventos de anfitrión');
 

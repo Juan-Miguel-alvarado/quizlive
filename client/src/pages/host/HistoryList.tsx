@@ -1,5 +1,6 @@
 import type { GameHistoryItem } from '@quiz/shared';
 import { useEffect, useState } from 'react';
+import { ArrowLeft } from 'react-bootstrap-icons';
 import { Link } from 'react-router';
 import { Wordmark } from '../../components/Wordmark';
 import { api } from '../../lib/api';
@@ -19,24 +20,25 @@ export default function HistoryList() {
       <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
         <Wordmark />
         <Link to="/host" className="btn btn-plain">
+          <ArrowLeft />
           Tus quizzes
         </Link>
       </header>
 
-      <h1 className="mb-4 border-b-2 border-ink pb-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
+      <h1 className="mb-4 border-b-2 border-white/25 pb-2 text-3xl font-black tracking-tight sm:text-4xl">
         Partidas jugadas
       </h1>
 
-      {error && <p className="rounded-md border-2 border-bad bg-bad/10 p-3 font-semibold text-bad">{error}</p>}
-      {games === null && !error && <p className="py-10 text-ink-soft">Cargando…</p>}
+      {error && <p className="rounded-xl bg-bad p-3 font-bold text-white shadow-3d-sm">{error}</p>}
+      {games === null && !error && <p className="py-10 text-stage-soft">Cargando…</p>}
       {games?.length === 0 && (
-        <p className="py-16 text-center text-ink-soft">Todavía no terminaste ninguna partida.</p>
+        <p className="py-16 text-center text-stage-soft">Todavía no terminaste ninguna partida.</p>
       )}
 
-      <ul className="divide-y-2 divide-ink/10">
+      <ul className={games?.length ? 'card divide-y-2 divide-black/5 overflow-hidden' : ''}>
         {games?.map((g) => (
           <li key={g.id}>
-            <Link to={`/host/history/${g.id}`} className="flex flex-wrap items-center gap-x-6 gap-y-1 py-4 hover:bg-paper-2">
+            <Link to={`/host/history/${g.id}`} className="flex flex-wrap items-center gap-x-6 gap-y-1 px-4 py-4 hover:bg-paper">
               <div className="min-w-0 flex-1">
                 <p className="text-lg font-bold break-words">{g.quizTitle}</p>
                 <p className="font-mono text-xs text-ink-soft">

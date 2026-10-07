@@ -131,7 +131,7 @@ historyRouter.post('/:id/retry', async (req, res) => {
     select: {
       questions: {
         orderBy: { order: 'asc' },
-        select: { order: true, type: true, text: true, imageId: true, options: true, correctIndices: true, timeLimitSec: true },
+        select: { order: true, type: true, text: true, imageId: true, options: true, correctIndices: true, timeLimitSec: true, explanation: true },
       },
     },
   });

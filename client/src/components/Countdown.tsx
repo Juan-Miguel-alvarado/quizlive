@@ -34,27 +34,29 @@ export function CountdownCircle({ endsAt, clockOffset, totalSec, size = 'lg', au
   const urgent = remaining <= 5000 && totalSec > 5;
   return (
     <div
-      className={`relative shrink-0 ${size === 'lg' ? 'size-24 sm:size-32 xl:size-40' : 'size-12'}`}
+      className={`relative shrink-0 ${size === 'lg' ? 'size-24 sm:size-32 xl:size-40' : 'size-12'} ${
+        urgent ? 'animate-[pulse-ring_1s_ease-in-out_infinite]' : ''
+      }`}
       role="timer"
       aria-label={`${Math.ceil(remaining / 1000)} segundos`}
     >
       <svg viewBox="0 0 100 100" className="size-full -rotate-90">
-        <circle cx="50" cy="50" r={r} className="fill-white stroke-ink" strokeWidth="4" />
+        <circle cx="50" cy="50" r={r} className="fill-stage-dark stroke-white/20" strokeWidth="4" />
         <circle
           cx="50"
           cy="50"
           r={r - 8}
           fill="none"
           strokeWidth={size === 'lg' ? 10 : 14}
-          className={`transition-[stroke-dashoffset] duration-100 ease-linear ${urgent ? 'stroke-bad' : 'stroke-accent'}`}
+          className={`transition-[stroke-dashoffset] duration-100 ease-linear ${urgent ? 'stroke-bad' : 'stroke-white'}`}
           strokeDasharray={2 * Math.PI * (r - 8)}
           strokeDashoffset={2 * Math.PI * (r - 8) * (1 - fraction)}
         />
       </svg>
       <span
-        className={`absolute inset-0 grid place-items-center font-extrabold tabular-nums ${
+        className={`absolute inset-0 grid place-items-center font-black text-white tabular-nums ${
           size === 'lg' ? 'text-3xl sm:text-5xl xl:text-6xl' : 'text-lg'
-        } ${urgent ? 'text-bad' : ''}`}
+        }`}
       >
         {seconds}
       </span>

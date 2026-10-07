@@ -3,6 +3,7 @@ import {
   hostKickSchema,
   playerAnswerSchema,
   playerJoinSchema,
+  playerReactSchema,
   playerRejoinSchema,
   type AckResponse,
 } from '@quiz/shared';
@@ -13,7 +14,9 @@ import { createRateLimiter } from '../lib/rateLimit';
 import type { TypedServer, TypedSocket } from './types';
 
 // El PIN son 6 dígitos: sin límite, alguien podría probarlos todos para colarse en partidas ajenas.
-const takeJoinAttempt = createRateLimiter({ limit: 30, windowMs: 5 * 60_000 });
+// Solo cuentan los PIN que no existen, y el cupo es amplio: con datos móviles muchos celulares
+// salen por la misma IP (CGNAT del operador) y varios pueden equivocarse al escribir.
+const joinFailures = createRateLimiter({ limit: 100, windowMs: 5 * 60_000 });
 
 type AnyAck = (res: AckResponse<object>) => void;
 
@@ -59,7 +62,7 @@ export function registerSocketHandlers(io: TypedServer, games: GameManager) {
     const findGame = (pin: string) => {
       const game = games.get(pin);
       if (!game) {
-        if (!takeJoinAttempt(clientIp)) throw new GameError('Demasiados intentos, espera unos minutos');
+        if (!joinFailures.take(clientIp)) throw new GameError('Demasiados intentos, espera unos minutos');
         throw new GameError('No existe una partida con ese PIN');
       }
       return game;
@@ -102,10 +105,10 @@ export function registerSocketHandlers(io: TypedServer, games: GameManager) {
     // --- Jugadores ---
     socket.on('player:join', (payload, ack) =>
       respond(ack, () => {
-        const { pin, nickname } = parse(playerJoinSchema, payload);
+        const { pin, nickname, avatar } = parse(playerJoinSchema, payload);
         const game = findGame(pin);
         leaveCurrentGame();
-        return game.addPlayer(socket, nickname);
+        return game.addPlayer(socket, nickname, avatar);
       }),
     );
     socket.on('player:rejoin', (payload, ack) =>
@@ -123,6 +126,15 @@ export function registerSocketHandlers(io: TypedServer, games: GameManager) {
         game.answer(playerId, questionIndex, choices);
       }),
     );
+
+    // Sin ack y sin errores: si la reacción no vale o el jugador no está en una partida, se ignora.
+    socket.on('player:react', (payload) => {
+      const parsed = playerReactSchema.safeParse(payload);
+      const { pin, role, playerId } = socket.data;
+      const game = games.get(pin);
+      if (!parsed.success || role !== 'player' || !playerId || !game?.hasPlayerSocket(playerId, socket.id)) return;
+      game.react(playerId, parsed.data.emoji);
+    });
 
     socket.on('disconnect', leaveCurrentGame);
   });

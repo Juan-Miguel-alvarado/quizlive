@@ -4,6 +4,7 @@ import type {
   HostJoinPayload,
   PlayerAnswerPayload,
   PlayerJoinPayload,
+  PlayerReactPayload,
   PlayerRejoinPayload,
   ServerToClientEvents,
 } from '@quiz/shared';
@@ -41,4 +42,6 @@ export const gameActions = {
   playerJoin: (p: PlayerJoinPayload) => call((s) => s.timeout(ACK_TIMEOUT_MS).emitWithAck('player:join', p)),
   playerRejoin: (p: PlayerRejoinPayload) => call((s) => s.timeout(ACK_TIMEOUT_MS).emitWithAck('player:rejoin', p)),
   playerAnswer: (p: PlayerAnswerPayload) => call((s) => s.timeout(ACK_TIMEOUT_MS).emitWithAck('player:answer', p)),
+  /** Sin ack: si se pierde una reacción no pasa nada. */
+  playerReact: (p: PlayerReactPayload) => void getSocket().emit('player:react', p),
 };

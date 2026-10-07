@@ -1,4 +1,4 @@
-import { parseQuizCsv } from '@quiz/shared';
+import { CSV_TEMPLATE, parseQuizCsv } from '@quiz/shared';
 import { describe, expect, it } from 'vitest';
 
 describe('importar CSV', () => {
@@ -33,5 +33,25 @@ describe('importar CSV', () => {
   it('acota el tiempo a los valores permitidos', () => {
     const { questions } = parseQuizCsv('unica,Larga,a,b,,,1,9999\n');
     expect(questions[0]!.timeLimitSec).toBe(120);
+  });
+
+  it('lee la explicación opcional de la 9.ª columna (con comas sin comillas)', () => {
+    const { questions, errors } = parseQuizCsv(
+      'tipo,pregunta,opcion1,opcion2,opcion3,opcion4,correctas,segundos,explicacion\n' +
+        'unica,¿Quién construyó el arca?,Noé,Moisés,,,1,20,Génesis 6, 14\n' +
+        'vf,Sin explicación,,,,,f,10,\n' +
+        'unica,Formato viejo,a,b,,,2,15\n',
+    );
+    expect(errors).toEqual([]);
+    expect(questions[0]).toMatchObject({ correctIndices: [0], timeLimitSec: 20, explanation: 'Génesis 6, 14' });
+    expect(questions[1]).toMatchObject({ correctIndices: [1], timeLimitSec: 10, explanation: null });
+    expect(questions[2]).toMatchObject({ correctIndices: [1], timeLimitSec: 15, explanation: null });
+  });
+
+  it('la plantilla de ejemplo se importa sin errores', () => {
+    const { questions, errors } = parseQuizCsv(CSV_TEMPLATE);
+    expect(errors).toEqual([]);
+    expect(questions).toHaveLength(3);
+    expect(questions.every((q) => q.explanation)).toBe(true);
   });
 });

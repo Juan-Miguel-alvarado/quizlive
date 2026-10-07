@@ -41,15 +41,26 @@ imagesRouter.post(
   },
 );
 
+// Al mostrarse una pregunta con imagen, 100 celulares la piden a la vez: se guardan en memoria
+// las últimas para no leer el mismo blob de Postgres 100 veces. Nunca cambian, así que no caducan.
+const CACHE_MAX = 40;
+const cache = new Map<string, { mime: string; data: Buffer }>();
+
 imagesRouter.get('/:id', async (req, res) => {
-  const image = await prisma.image.findUnique({ where: { id: req.params.id } });
+  let image = cache.get(req.params.id);
   if (!image) {
-    res.status(404).json({ error: 'Imagen no encontrada' });
-    return;
+    const row = await prisma.image.findUnique({ where: { id: req.params.id } });
+    if (!row) {
+      res.status(404).json({ error: 'Imagen no encontrada' });
+      return;
+    }
+    image = { mime: row.mime, data: Buffer.from(row.data) };
+    cache.set(req.params.id, image);
+    if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value!);
   }
   // Las imágenes nunca cambian (editar = subir otra), así que se pueden cachear para siempre.
   res.set('Content-Type', image.mime).set('Cache-Control', 'public, max-age=31536000, immutable');
-  res.send(Buffer.from(image.data));
+  res.send(image.data);
 });
 
 /** Borra imágenes que ninguna pregunta usa (con margen de un día para las recién subidas). */

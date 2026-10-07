@@ -1,3 +1,5 @@
+import type { Avatar } from '@quiz/shared';
+
 // localStorage puede fallar (modo privado, almacenamiento bloqueado): nunca debe romper la app.
 function read<T>(key: string): T | null {
   try {
@@ -27,6 +29,17 @@ export const playerSession = {
   get: () => read<PlayerSession>('quizlive:player'),
   set: (s: PlayerSession) => write('quizlive:player', s),
   clear: () => write('quizlive:player', null),
+};
+
+/** Apodo y avatar de la última partida: la próxima vez se entra con un solo toque. */
+export interface PlayerProfile {
+  nickname: string;
+  avatar: Avatar;
+}
+
+export const playerProfile = {
+  get: () => read<PlayerProfile>('quizlive:profile'),
+  set: (p: PlayerProfile) => write('quizlive:profile', p),
 };
 
 export const hostSession = {

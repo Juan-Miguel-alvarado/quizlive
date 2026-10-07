@@ -5,20 +5,22 @@ type Shape = 'triangle' | 'diamond' | 'circle' | 'square';
 export interface OptionStyle {
   shape: Shape;
   label: string;
+  /** Letra para nombrar la opción en voz alta ("la A", "la azul"); vacía en verdadero/falso. */
+  letter: string;
   bg: string;
   text: string; // color de texto con contraste suficiente sobre bg
 }
 
 const STYLES: OptionStyle[] = [
-  { shape: 'triangle', label: 'Triángulo', bg: 'bg-opt-red', text: 'text-white' },
-  { shape: 'diamond', label: 'Rombo', bg: 'bg-opt-blue', text: 'text-white' },
-  { shape: 'circle', label: 'Círculo', bg: 'bg-opt-yellow', text: 'text-ink' },
-  { shape: 'square', label: 'Cuadrado', bg: 'bg-opt-green', text: 'text-white' },
+  { shape: 'triangle', label: 'Triángulo', letter: 'A', bg: 'bg-opt-red', text: 'text-white' },
+  { shape: 'diamond', label: 'Rombo', letter: 'B', bg: 'bg-opt-blue', text: 'text-white' },
+  { shape: 'circle', label: 'Círculo', letter: 'C', bg: 'bg-opt-yellow', text: 'text-ink' },
+  { shape: 'square', label: 'Cuadrado', letter: 'D', bg: 'bg-opt-green', text: 'text-white' },
 ];
 
 /** Verdadero = rombo azul, Falso = triángulo rojo; el resto por posición. */
 export function optionStyle(type: QuestionType, index: number): OptionStyle {
-  if (type === 'truefalse') return STYLES[index === 0 ? 1 : 0]!;
+  if (type === 'truefalse') return { ...STYLES[index === 0 ? 1 : 0]!, letter: '' };
   return STYLES[index]!;
 }
 
@@ -43,4 +45,11 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   single: 'Opción única',
   multiple: 'Selección múltiple',
   truefalse: 'Verdadero o falso',
+};
+
+/** Lo mismo en palabras sencillas, para quien juega (niños y mayores). */
+export const QUESTION_TYPE_HINTS: Record<QuestionType, string> = {
+  single: 'Elige una respuesta',
+  multiple: 'Puedes elegir varias respuestas',
+  truefalse: '¿Verdadero o falso?',
 };

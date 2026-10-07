@@ -11,7 +11,7 @@ export function Wordmark({ size = 'sm' }: { size?: 'sm' | 'lg' }) {
         <OptionShape shape="circle" className="size-full text-opt-yellow" />
         <OptionShape shape="square" className="size-full text-opt-green" />
       </span>
-      <span className={`font-extrabold tracking-tight ${big ? 'text-5xl sm:text-6xl' : 'text-xl'}`}>QuizLive</span>
+      <span className={`font-black tracking-tight text-white ${big ? 'text-5xl sm:text-6xl' : 'text-xl'}`}>QuizLive</span>
     </Link>
   );
 }

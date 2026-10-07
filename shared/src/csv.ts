@@ -2,10 +2,10 @@ import { MAX_OPTIONS, TRUE_FALSE_OPTIONS } from './schemas';
 import type { QuestionInput, QuestionType } from './schemas';
 
 export const CSV_TEMPLATE =
-  'tipo,pregunta,opcion1,opcion2,opcion3,opcion4,correctas,segundos\n' +
-  'unica,¿Capital de Francia?,París,Roma,Lima,Quito,1,20\n' +
-  'multiple,¿Cuáles son lenguajes?,TypeScript,HTML,Rust,CSS,1;3,30\n' +
-  'vf,PostgreSQL es relacional,,,,,v,10\n';
+  'tipo,pregunta,opcion1,opcion2,opcion3,opcion4,correctas,segundos,explicacion\n' +
+  'unica,¿Quién construyó el arca?,Noé,Moisés,David,Pedro,1,20,Génesis 6:14\n' +
+  'multiple,¿Cuáles son evangelios?,Mateo,Hechos,Juan,Salmos,1;3,30,Mateo · Marcos · Lucas · Juan\n' +
+  'vf,Jonás estuvo tres días dentro del gran pez,,,,,v,15,Jonás 1:17\n';
 
 const TYPES: Record<string, QuestionType> = {
   unica: 'single',
@@ -70,8 +70,13 @@ export function parseQuizCsv(text: string): CsvResult {
     const text = cells[1] ?? '';
     if (!text) return errors.push(`Fila ${fila}: la pregunta está vacía`);
 
-    const rawCorrect = (cells.at(-2) ?? '').toLowerCase();
-    const timeLimitSec = Number(cells.at(-1)) || 20;
+    // Con 9 columnas la última es la explicación (opcional); sin ella, las dos últimas son
+    // correctas y segundos, como en el formato original.
+    const hasExplanation = cells.length >= 9;
+    const tail = hasExplanation ? cells.slice(6, 8) : cells.slice(-2);
+    const rawCorrect = (tail[0] ?? '').toLowerCase();
+    const timeLimitSec = Number(tail[1]) || 20;
+    const explanation = hasExplanation ? cells.slice(8).join(`${sep} `).trim().slice(0, 300) || null : null;
     const options =
       type === 'truefalse' ? [...TRUE_FALSE_OPTIONS] : cells.slice(2, 2 + MAX_OPTIONS).filter(Boolean);
 
@@ -96,6 +101,7 @@ export function parseQuizCsv(text: string): CsvResult {
       options,
       correctIndices,
       timeLimitSec: Math.min(120, Math.max(5, timeLimitSec)),
+      explanation,
     });
   });
 

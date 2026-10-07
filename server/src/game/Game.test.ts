@@ -42,9 +42,9 @@ const quiz = {
   id: 'quiz1',
   title: 'Prueba',
   questions: [
-    { type: 'single' as const, text: 'P1', imageId: null, options: ['a', 'b'], correctIndices: [0], timeLimitSec: 10 },
-    { type: 'single' as const, text: 'P2', imageId: null, options: ['a', 'b'], correctIndices: [1], timeLimitSec: 10 },
-    { type: 'multiple' as const, text: 'P3', imageId: null, options: ['a', 'b', 'c'], correctIndices: [0, 2], timeLimitSec: 10 },
+    { type: 'single' as const, text: 'P1', imageId: null, options: ['a', 'b'], correctIndices: [0], timeLimitSec: 10, explanation: 'Génesis 1:1' },
+    { type: 'single' as const, text: 'P2', imageId: null, options: ['a', 'b'], correctIndices: [1], timeLimitSec: 10, explanation: null },
+    { type: 'multiple' as const, text: 'P3', imageId: null, options: ['a', 'b', 'c'], correctIndices: [0, 2], timeLimitSec: 10, explanation: null },
   ],
 };
 
@@ -82,9 +82,49 @@ describe('Game', () => {
     expect(() => game.start()).toThrow(/al menos un jugador/);
   });
 
-  it('rechaza apodos repetidos sin importar mayúsculas', () => {
+  it('numera los apodos repetidos sin importar mayúsculas en vez de rechazarlos', () => {
     addPlayer('Ana');
-    expect(() => addPlayer('ANA')).toThrow(/ya está en uso/);
+    addPlayer('ANA');
+    addPlayer('ana');
+    const largo = 'Hipopótamo Brillante'; // 20 caracteres: el sufijo no debe pasarse del máximo
+    addPlayer(largo);
+    addPlayer(largo);
+    const nombres = game.snapshot(null).players.map((p) => p.nickname);
+    expect(nombres).toEqual(['Ana', 'ANA 2', 'ana 3', largo, 'Hipopótamo Brillan 2']);
+    expect(nombres.every((n) => n.length <= 20)).toBe(true);
+  });
+
+  it('asigna un avatar si el jugador no elige ninguno', () => {
+    addPlayer('Ana');
+    const socket = new FakeSocket('s-Beto');
+    game.addPlayer(socket as never, 'Beto', '🦁');
+    const [ana, beto] = game.snapshot(null).players;
+    expect(ana!.avatar).toBeTruthy();
+    expect(beto!.avatar).toBe('🦁');
+  });
+
+  it('agrupa las reacciones hacia el anfitrión e ignora las demasiado seguidas', () => {
+    const ana = addPlayer('Ana');
+    const beto = addPlayer('Beto');
+    game.react(ana.playerId, '👏');
+    game.react(ana.playerId, '👏'); // muy seguida: se ignora
+    game.react(beto.playerId, '👏');
+    game.react('no-existe', '🔥');
+    vi.advanceTimersByTime(200);
+    const reacciones = io.emitted.filter((e) => e.event === 'host:reactions');
+    expect(reacciones).toHaveLength(1);
+    expect(reacciones[0]).toMatchObject({ target: 'game:123456:host', payload: { counts: { '👏': 2 } } });
+
+    vi.advanceTimersByTime(1500);
+    game.react(ana.playerId, '🙏'); // pasó el tiempo de espera
+    vi.advanceTimersByTime(200);
+    expect(lastEvent('host:reactions')).toEqual({ counts: { '🙏': 1 } });
+
+    startQuestion();
+    vi.advanceTimersByTime(1500);
+    game.react(beto.playerId, '🔥'); // durante la pregunta no se aceptan
+    vi.advanceTimersByTime(200);
+    expect(io.emitted.filter((e) => e.event === 'host:reactions')).toHaveLength(2);
   });
 
   it('da más puntos a quien responde antes y ninguno a quien falla', () => {
@@ -99,7 +139,11 @@ describe('Game', () => {
 
     const ranking = game.snapshot(null);
     expect(ranking.phase).toBe('reveal');
-    expect(lastEvent('question:reveal')).toMatchObject({ correctIndices: [0], distribution: [1, 1] });
+    expect(lastEvent('question:reveal')).toMatchObject({
+      correctIndices: [0],
+      distribution: [1, 1],
+      explanation: 'Génesis 1:1',
+    });
     const resultados = io.emitted.filter((e) => e.event === 'player:result').map((e) => e.payload as { points: number });
     expect(resultados[0]!.points).toBe(1000);
     expect(resultados[1]!.points).toBe(0);

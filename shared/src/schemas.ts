@@ -26,6 +26,13 @@ const questionObjectSchema = z.object({
     .max(MAX_OPTIONS, `Máximo ${MAX_OPTIONS} opciones`),
   correctIndices: z.array(z.number().int().min(0).max(MAX_OPTIONS - 1)),
   timeLimitSec: z.number().int().min(5).max(120),
+  // Se muestra al revelar la respuesta: un dato curioso, una aclaración o un versículo.
+  explanation: z
+    .string()
+    .trim()
+    .max(300, 'La explicación tiene como máximo 300 caracteres')
+    .nullish()
+    .transform((s) => s || null),
 });
 
 export const questionInputSchema = z
@@ -58,11 +65,46 @@ export const nicknameSchema = z
   .transform((s) => s.trim().replace(/\s+/g, ' '))
   .pipe(z.string().min(1, 'Escribe un apodo').max(20, 'Máximo 20 caracteres'));
 
+export const AVATARS = [
+  { emoji: '🦁', name: 'León' },
+  { emoji: '🐑', name: 'Oveja' },
+  { emoji: '🕊️', name: 'Paloma' },
+  { emoji: '🐻', name: 'Oso' },
+  { emoji: '🐘', name: 'Elefante' },
+  { emoji: '🦒', name: 'Jirafa' },
+  { emoji: '🐬', name: 'Delfín' },
+  { emoji: '🐢', name: 'Tortuga' },
+  { emoji: '🦊', name: 'Zorro' },
+  { emoji: '🐰', name: 'Conejo' },
+  { emoji: '🐼', name: 'Panda' },
+  { emoji: '🐯', name: 'Tigre' },
+  { emoji: '🦉', name: 'Búho' },
+  { emoji: '🐧', name: 'Pingüino' },
+  { emoji: '🐳', name: 'Ballena' },
+  { emoji: '🦋', name: 'Mariposa' },
+  { emoji: '🐝', name: 'Abeja' },
+  { emoji: '🐞', name: 'Mariquita' },
+  { emoji: '🐿️', name: 'Ardilla' },
+  { emoji: '🦜', name: 'Loro' },
+  { emoji: '🐴', name: 'Caballo' },
+  { emoji: '🐫', name: 'Camello' },
+  { emoji: '🐟', name: 'Pez' },
+  { emoji: '🦅', name: 'Águila' },
+] as const;
+export type Avatar = (typeof AVATARS)[number]['emoji'];
+export const avatarSchema = z.enum(AVATARS.map((a) => a.emoji) as [Avatar, ...Avatar[]]);
+
+/** Reacciones que los jugadores mandan a la pantalla grande. */
+export const REACTIONS = ['👏', '🙌', '🔥', '😂', '❤️', '🙏'] as const;
+export type Reaction = (typeof REACTIONS)[number];
+export const playerReactSchema = z.object({ emoji: z.enum(REACTIONS) });
+
 export const createGameSchema = z.object({ quizId: z.string().min(1) });
 export const hostLoginSchema = z.object({ password: z.string().min(1).max(200) });
 export const hostJoinSchema = z.object({ pin: pinSchema, hostToken: z.string().min(1).max(100) });
 export const hostKickSchema = z.object({ playerId: z.string().min(1).max(100) });
-export const playerJoinSchema = z.object({ pin: pinSchema, nickname: nicknameSchema });
+// Opcional: los scripts (bots, e2e, carga) no lo mandan y el servidor elige uno al azar.
+export const playerJoinSchema = z.object({ pin: pinSchema, nickname: nicknameSchema, avatar: avatarSchema.optional() });
 export const playerRejoinSchema = z.object({ pin: pinSchema, playerToken: z.string().min(1).max(100) });
 export const playerAnswerSchema = z.object({
   questionIndex: z.number().int().min(0),
@@ -78,3 +120,4 @@ export type HostKickPayload = z.infer<typeof hostKickSchema>;
 export type PlayerJoinPayload = z.input<typeof playerJoinSchema>;
 export type PlayerRejoinPayload = z.infer<typeof playerRejoinSchema>;
 export type PlayerAnswerPayload = z.infer<typeof playerAnswerSchema>;
+export type PlayerReactPayload = z.infer<typeof playerReactSchema>;

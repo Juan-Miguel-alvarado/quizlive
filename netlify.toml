@@ -7,6 +7,8 @@
   NODE_VERSION = "24"
   # Backend desplegado con render.yaml
   VITE_SERVER_URL = "https://quizlivee-server.onrender.com"
+  # La dirección que el lobby anuncia a los jugadores (QR y enlace corto)
+  VITE_PUBLIC_URL = "https://quizlivee.netlify.app"
 
 # SPA: cualquier ruta (/host, /play…) la resuelve React Router
 [[redirects]]

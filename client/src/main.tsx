@@ -1,15 +1,18 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
+import { createBrowserRouter, Navigate, RouterProvider, useParams } from 'react-router';
 import './index.css';
 import Home from './pages/Home';
-import GameReportPage from './pages/host/GameReport';
-import HistoryList from './pages/host/HistoryList';
-import HostGame from './pages/host/HostGame';
-import HostGate from './pages/host/HostGate';
-import QuizEditor from './pages/host/QuizEditor';
-import QuizList from './pages/host/QuizList';
 import PlayerGame from './pages/play/PlayerGame';
+import { textSize } from './lib/textSize';
+
+textSize.init();
+
+/** Ruta corta para unirse (/482913): es la que lleva el QR y la más fácil de dictar. */
+function JoinByPin() {
+  const { pin = '' } = useParams();
+  return /^\d{6}$/.test(pin) ? <Home key={pin} /> : <Navigate to="/" replace />;
+}
 
 // Detecta la etiqueta "Powered by Netlify" para reservarle espacio (ver --badge-space en index.css).
 const badgeObserver = new MutationObserver(() => {
@@ -19,21 +22,27 @@ const badgeObserver = new MutationObserver(() => {
 });
 badgeObserver.observe(document.body, { childList: true, subtree: true });
 
+// Las pantallas del anfitrión se descargan aparte: los jugadores (con datos móviles) no las bajan.
+const page = (load: () => Promise<{ default: React.ComponentType }>) => async () => ({
+  Component: (await load()).default,
+});
+
 const router = createBrowserRouter([
   { path: '/', element: <Home /> },
   {
     path: '/host',
-    element: <HostGate />,
+    lazy: page(() => import('./pages/host/HostGate')),
     children: [
-      { index: true, element: <QuizList /> },
-      { path: 'quizzes/new', element: <QuizEditor /> },
-      { path: 'quizzes/:id', element: <QuizEditor /> },
-      { path: 'game/:pin', element: <HostGame /> },
-      { path: 'history', element: <HistoryList /> },
-      { path: 'history/:id', element: <GameReportPage /> },
+      { index: true, lazy: page(() => import('./pages/host/QuizList')) },
+      { path: 'quizzes/new', lazy: page(() => import('./pages/host/QuizEditor')) },
+      { path: 'quizzes/:id', lazy: page(() => import('./pages/host/QuizEditor')) },
+      { path: 'game/:pin', lazy: page(() => import('./pages/host/HostGame')) },
+      { path: 'history', lazy: page(() => import('./pages/host/HistoryList')) },
+      { path: 'history/:id', lazy: page(() => import('./pages/host/GameReport')) },
     ],
   },
   { path: '/play', element: <PlayerGame /> },
+  { path: '/:pin', element: <JoinByPin /> },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);
 

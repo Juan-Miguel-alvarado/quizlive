@@ -17,6 +17,7 @@ const questionsInclude = {
       options: true,
       correctIndices: true,
       timeLimitSec: true,
+      explanation: true,
     },
   },
 } as const;

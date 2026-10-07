@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router';
+import { WakingBanner } from '../../components/WakingBanner';
 import { Wordmark } from '../../components/Wordmark';
 import { api } from '../../lib/api';
 import { hostSession } from '../../lib/session';
+import { useServerWakeup } from '../../lib/useServerWakeup';
 
 /** Envuelve todo /host: sin la clave de anfitrión no se ven ni se tocan los quizzes. */
 export default function HostGate() {
@@ -10,6 +12,7 @@ export default function HostGate() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const waking = useServerWakeup();
 
   useEffect(() => {
     if (status !== 'checking') return;
@@ -37,14 +40,22 @@ export default function HostGate() {
     }
   }
 
-  if (status === 'checking') return <p className="p-8 text-ink-soft">Comprobando sesión…</p>;
+  if (status === 'checking') {
+    return (
+      <div className="mx-auto max-w-sm p-8">
+        <WakingBanner waking={waking} />
+        <p className="text-stage-soft">Comprobando sesión…</p>
+      </div>
+    );
+  }
   if (status === 'in') return <Outlet />;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-4 pb-[calc(1.5rem+var(--badge-space))]">
-      <div className="mb-8">
+      <div className="mb-8 text-center">
         <Wordmark size="lg" />
       </div>
+      <WakingBanner waking={waking} />
       <form onSubmit={submit} className="card p-4">
         <label htmlFor="host-password" className="eyebrow">
           Clave de anfitrión
@@ -58,7 +69,7 @@ export default function HostGate() {
           autoComplete="current-password"
           className="field mt-2 text-lg"
         />
-        <button disabled={busy} className="btn btn-primary btn-lg mt-3 w-full">
+        <button disabled={busy} className="btn btn-dark btn-lg mt-3 w-full">
           {busy ? 'Entrando…' : 'Entrar'}
         </button>
         {error && (

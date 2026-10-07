@@ -1,33 +1,61 @@
 @import "tailwindcss";
-@import "@fontsource-variable/bricolage-grotesque";
-@import "@fontsource-variable/jetbrains-mono";
+/* Roboto y Roboto Mono se cargan desde Google Fonts en index.html. */
 
 @theme {
-  --font-sans: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+  --font-sans: "Roboto", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Roboto Mono", ui-monospace, monospace;
 
-  --color-paper: #f3efe6;
-  --color-paper-2: #e7e1d3;
-  --color-ink: #17150f;
-  --color-ink-soft: #5d584c;
-  --color-accent: #ff5a1f;
+  /* Escenario morado tipo Kahoot: el fondo de todas las pantallas. Sobre él, texto blanco
+     (secundario: text-stage-soft); lo que hay que leer con calma va en .card blanca. */
+  --color-stage: #46178f;
+  --color-stage-dark: #25076b;
+  --color-stage-light: #864cbf;
+  --color-stage-soft: rgb(255 255 255 / 0.78);
 
-  --color-opt-red: #e5484d;
-  --color-opt-blue: #3a6de0;
-  --color-opt-yellow: #f4b52c;
-  --color-opt-green: #2c9a58;
-  --color-good: #2c9a58;
-  --color-bad: #e5484d;
+  /* Dentro de las tarjetas blancas. */
+  --color-paper: #f2f2f2;
+  --color-paper-2: #e6e6e6;
+  --color-ink: #1f1f1f;
+  --color-ink-soft: #6b6b6b;
+  --color-accent: #ff8a00;
+  --color-dark: #333333;
 
-  --shadow-hard: 4px 4px 0 0 var(--color-ink);
-  --shadow-hard-sm: 2px 2px 0 0 var(--color-ink);
-  --shadow-hard-lg: 6px 6px 0 0 var(--color-ink);
+  /* Respuestas, como en Kahoot. El amarillo lleva texto oscuro: blanco sobre él no se lee bien. */
+  --color-opt-red: #e21b3c;
+  --color-opt-blue: #1368ce;
+  --color-opt-yellow: #d89e00;
+  --color-opt-green: #26890c;
+  --color-good: #26890c;
+  --color-bad: #e21b3c;
+
+  --color-gold: #f5c518;
+  --color-silver: #c0c6cc;
+  --color-bronze: #cd7f32;
+
+  /* Sombra 3D (abajo) de botones y tarjetas. Los nombres hard* quedan como alias. */
+  --shadow-3d: 0 4px 0 0 rgb(0 0 0 / 0.25);
+  --shadow-3d-sm: 0 3px 0 0 rgb(0 0 0 / 0.25);
+  --shadow-3d-lg: 0 6px 0 0 rgb(0 0 0 / 0.3);
+  --shadow-hard: var(--shadow-3d);
+  --shadow-hard-sm: var(--shadow-3d-sm);
+  --shadow-hard-lg: var(--shadow-3d-lg);
 }
 
 html,
 body,
 #root {
   min-height: 100dvh;
+}
+
+/* En el celular todo es un poco más grande (lo usan desde niños hasta abuelos), y el botón «Letra»
+   del jugador lo agranda más (ver lib/textSize.ts). El proyector no cambia: su diseño ya es grande. */
+@media (max-width: 40rem) {
+  html {
+    font-size: 112.5%;
+  }
+  html[data-big-text] {
+    font-size: 131.25%;
+  }
 }
 
 /* Netlify (plan gratis) pone una etiqueta fija de 194×64 px abajo a la derecha.
@@ -40,8 +68,24 @@ body,
 }
 
 body {
-  @apply bg-paper font-sans text-ink antialiased;
-  font-optical-sizing: auto;
+  @apply font-sans text-white antialiased;
+  background-color: var(--color-stage);
+  background-image:
+    radial-gradient(ellipse at top, var(--color-stage-light) 0%, transparent 60%),
+    radial-gradient(ellipse at bottom, var(--color-stage-dark) 0%, transparent 70%);
+  background-attachment: fixed;
+}
+
+/* Figuras del juego muy tenues al fondo, como el escenario de Kahoot. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' fill='white'%3E%3Cpath d='M40 20 64 62H16z'/%3E%3Cpath d='M180 10l22 22-22 22-22-22z'/%3E%3Ccircle cx='60' cy='180' r='22'/%3E%3Crect x='160' y='158' width='40' height='40' rx='4'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
 }
 
 ::selection {
@@ -55,38 +99,54 @@ body {
 }
 
 @layer components {
+  /* Botones 3D: sombra abajo que desaparece al pulsar. */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md border-2 border-ink px-4 py-2 font-bold whitespace-nowrap shadow-hard-sm transition-[translate,box-shadow] duration-75 select-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 font-black whitespace-nowrap shadow-3d-sm transition-[translate,box-shadow,background-color] duration-75 select-none;
   }
   .btn:active:not(:disabled) {
-    @apply translate-x-0.5 translate-y-0.5 shadow-none;
+    @apply translate-y-0.5 shadow-none;
   }
   .btn:disabled {
     @apply cursor-not-allowed opacity-40;
   }
+  /* Blanco con letra morada: el "Entrar" de Kahoot. */
   .btn-primary {
-    @apply bg-ink text-paper;
+    @apply bg-white text-stage-dark hover:bg-paper;
   }
+  /* Verde: empezar y jugar. */
   .btn-accent {
-    @apply bg-accent text-ink;
+    @apply bg-opt-green text-white hover:brightness-110;
   }
+  .btn-dark {
+    @apply bg-dark text-white hover:bg-black;
+  }
+  /* Secundario sobre el morado. Dentro de una .card usar btn-light. */
   .btn-plain {
-    @apply bg-white text-ink hover:bg-paper-2;
+    @apply bg-white/15 text-white shadow-none hover:bg-white/25;
+  }
+  .btn-light {
+    @apply bg-paper text-ink hover:bg-paper-2;
   }
   .btn-lg {
     @apply px-6 py-3 text-lg;
   }
 
   .card {
-    @apply rounded-lg border-2 border-ink bg-white shadow-hard;
+    @apply rounded-2xl bg-white text-ink shadow-3d;
   }
 
   .field {
-    @apply w-full rounded-md border-2 border-ink bg-white px-3 py-2 outline-none placeholder:text-ink-soft/60 focus:ring-4 focus:ring-accent/35;
+    @apply w-full rounded-lg border-2 border-black/15 bg-white px-3 py-2 text-ink outline-none placeholder:text-ink-soft/60 focus:border-stage-light focus:ring-4 focus:ring-stage-light/30;
   }
 
+  /* Hereda el color: sirve sobre el morado y dentro de las tarjetas. */
   .eyebrow {
-    @apply text-xs font-bold tracking-[0.12em] text-ink-soft uppercase;
+    @apply text-xs font-bold tracking-[0.12em] uppercase opacity-75;
+  }
+
+  /* Píldora blanca sobre el morado (PIN, títulos de fase, contadores). */
+  .pill {
+    @apply inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 font-black text-ink shadow-3d;
   }
 }
 
@@ -103,6 +163,31 @@ body {
 @keyframes pop {
   0% { transform: scale(0.85); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
+}
+
+/* Reacciones que suben por la pantalla del proyector (components/Reactions.tsx). */
+@keyframes float-up {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  10% { transform: translateY(-5vh) scale(1.1); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(-75vh) translateX(var(--drift, 0)) scale(1); opacity: 0; }
+}
+
+@keyframes bump {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scale(1.15); }
+}
+
+/* Temporizador en los últimos segundos. */
+@keyframes pulse-ring {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+/* Nombres del podio: aparecen cuando su columna ya subió. */
+@keyframes podium-reveal {
+  0% { opacity: 0; transform: translateY(1rem) scale(0.9); }
+  100% { opacity: 1; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

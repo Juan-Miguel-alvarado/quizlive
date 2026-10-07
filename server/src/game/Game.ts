@@ -9,7 +9,7 @@ import type {
   RevealView,
   ScoreEntry,
 } from '@quiz/shared';
-import { QUESTION_COUNTDOWN_SEC, type QuestionType } from '@quiz/shared';
+import { QUESTION_COUNTDOWN_SEC, randomAvatar, type Avatar, type QuestionType, type Reaction } from '@quiz/shared';
 import { prisma } from '../lib/prisma';
 import type { TypedServer, TypedSocket } from '../socket/types';
 import { computePoints, rankPlayers, streakBonus } from './scoring';
@@ -24,6 +24,7 @@ export interface GameQuiz {
     options: string[];
     correctIndices: number[];
     timeLimitSec: number;
+    explanation: string | null;
   }[];
 }
 
@@ -40,8 +41,10 @@ interface Player {
   id: string;
   token: string;
   nickname: string;
+  avatar: Avatar;
   score: number;
   socketId: string | null;
+  lastReactionAt: number;
   streak: number; // aciertos seguidos
   answers: (AnswerRecord | undefined)[]; // indexado por número de pregunta
 }
@@ -55,6 +58,9 @@ const FINISHED_TTL_MS = 10 * 60_000;
 // Con 200 jugadores entrando o respondiendo a la vez, el anfitrión recibe como mucho
 // una actualización de la lista y del contador cada este intervalo (no una por jugador).
 const HOST_UPDATE_MS = 150;
+// Una reacción por jugador cada este tiempo: suficiente para animar, sin dejar que nadie inunde la pantalla.
+const REACTION_COOLDOWN_MS = 1500;
+const NICKNAME_MAX = 20;
 
 export class Game {
   readonly hostToken = randomUUID();
@@ -70,7 +76,8 @@ export class Game {
   private lifecycleTimer?: NodeJS.Timeout;
   private hostUpdateTimer?: NodeJS.Timeout;
   private previousRanks = new Map<string, number>(); // para las flechas de la clasificación
-  private pendingHostUpdates = new Set<'players' | 'progress'>();
+  private pendingHostUpdates = new Set<'players' | 'progress' | 'reactions'>();
+  private pendingReactions = new Map<Reaction, number>();
   private startedAt: Date | null = null;
   private closed = false;
 
@@ -203,19 +210,17 @@ export class Game {
     return this.players.get(playerId)?.socketId === socketId;
   }
 
-  addPlayer(socket: TypedSocket, nickname: string) {
+  addPlayer(socket: TypedSocket, nickname: string, avatar: Avatar = randomAvatar()) {
     if (this.phase === 'podium') throw new GameError('La partida ya terminó');
     if (this.players.size >= MAX_PLAYERS) throw new GameError('La partida está llena');
-    const key = nickname.toLocaleLowerCase();
-    for (const p of this.players.values()) {
-      if (p.nickname.toLocaleLowerCase() === key) throw new GameError('Ese apodo ya está en uso');
-    }
     const player: Player = {
       id: randomUUID(),
       token: randomUUID(),
-      nickname,
+      nickname: this.uniqueNickname(nickname),
+      avatar,
       score: 0,
       socketId: null,
+      lastReactionAt: 0,
       streak: 0,
       answers: [],
     };
@@ -240,6 +245,20 @@ export class Game {
     // Se conserva el jugador (y su puntaje) para que pueda reconectarse.
     player.socketId = null;
     this.broadcastPlayers();
+  }
+
+  /**
+   * Reacción para la pantalla grande. Solo entre preguntas (lobby, clasificación, podio): durante
+   * la pregunta y la revelación taparían lo importante. Las demasiado seguidas se ignoran sin avisar.
+   */
+  react(playerId: string, emoji: Reaction) {
+    if (!['lobby', 'leaderboard', 'podium'].includes(this.phase)) return;
+    const player = this.players.get(playerId);
+    const now = Date.now();
+    if (!player || now - player.lastReactionAt < REACTION_COOLDOWN_MS) return;
+    player.lastReactionAt = now;
+    this.pendingReactions.set(emoji, (this.pendingReactions.get(emoji) ?? 0) + 1);
+    this.queueHostUpdate('reactions');
   }
 
   answer(playerId: string, questionIndex: number, choices: number[]) {
@@ -375,6 +394,7 @@ export class Game {
         ? {
             id: player.id,
             nickname: player.nickname,
+            avatar: player.avatar,
             score: player.score,
             rank: ranks.get(player.id) ?? 0,
             answer: inQuestion ? this.choicesOf(player) : null,
@@ -417,7 +437,7 @@ export class Game {
     for (const p of this.players.values()) {
       for (const c of p.answers[this.index]?.choices ?? []) distribution[c]!++;
     }
-    return { index: this.index, correctIndices: q.correctIndices, distribution };
+    return { index: this.index, correctIndices: q.correctIndices, distribution, explanation: q.explanation };
   }
 
   private resultFor(p: Player, ranks: Map<string, number>): AnswerResult {
@@ -446,15 +466,33 @@ export class Game {
         return {
           playerId: player.id,
           nickname: player.nickname,
+          avatar: player.avatar,
           score: player.score,
           rank,
+          streak: player.streak,
           delta: before === undefined ? 0 : before - rank,
         };
       });
   }
 
   private publicPlayers(): PlayerPublic[] {
-    return [...this.players.values()].map((p) => ({ id: p.id, nickname: p.nickname, connected: p.socketId !== null }));
+    return [...this.players.values()].map((p) => ({
+      id: p.id,
+      nickname: p.nickname,
+      avatar: p.avatar,
+      connected: p.socketId !== null,
+    }));
+  }
+
+  /** Si el apodo ya existe se le añade un número ("Ana" → "Ana 2"): entrar no debe fallar por eso. */
+  private uniqueNickname(nickname: string) {
+    const taken = new Set([...this.players.values()].map((p) => p.nickname.toLocaleLowerCase()));
+    if (!taken.has(nickname.toLocaleLowerCase())) return nickname;
+    for (let n = 2; ; n++) {
+      const suffix = ` ${n}`;
+      const candidate = nickname.slice(0, NICKNAME_MAX - suffix.length).trimEnd() + suffix;
+      if (!taken.has(candidate.toLocaleLowerCase())) return candidate;
+    }
   }
 
   private connectedPlayers() {
@@ -482,7 +520,7 @@ export class Game {
     if (this.phase === 'question') this.queueHostUpdate('progress');
   }
 
-  private queueHostUpdate(kind: 'players' | 'progress') {
+  private queueHostUpdate(kind: 'players' | 'progress' | 'reactions') {
     this.pendingHostUpdates.add(kind);
     this.hostUpdateTimer ??= setTimeout(() => this.flushHostUpdates(), HOST_UPDATE_MS);
   }
@@ -495,6 +533,10 @@ export class Game {
     }
     if (this.pendingHostUpdates.has('progress') && this.phase === 'question') {
       this.io.to(this.hostRoom).emit('question:progress', { answered: this.answeredCount(), total: this.players.size });
+    }
+    if (this.pendingHostUpdates.has('reactions') && this.pendingReactions.size > 0) {
+      this.io.to(this.hostRoom).emit('host:reactions', { counts: Object.fromEntries(this.pendingReactions) });
+      this.pendingReactions.clear();
     }
     this.pendingHostUpdates.clear();
   }

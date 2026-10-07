@@ -1,5 +1,6 @@
 import type { QuizSummary } from '@quiz/shared';
 import { useEffect, useState } from 'react';
+import { BoxArrowLeft, ClockHistory, PencilSquare, PlayFill, PlusLg, Trash3 } from 'react-bootstrap-icons';
 import { Link, useNavigate } from 'react-router';
 import { Wordmark } from '../../components/Wordmark';
 import { api } from '../../lib/api';
@@ -45,6 +46,7 @@ export default function QuizList() {
         <Wordmark />
         <div className="flex flex-wrap gap-2">
           <Link to="/host/history" className="btn btn-plain">
+            <ClockHistory />
             Partidas jugadas
           </Link>
           <button
@@ -54,31 +56,33 @@ export default function QuizList() {
             }}
             className="btn btn-plain"
           >
+            <BoxArrowLeft />
             Salir
           </button>
           <Link to="/host/quizzes/new" className="btn btn-accent">
-            + Nuevo quiz
+            <PlusLg />
+            Nuevo quiz
           </Link>
         </div>
       </header>
 
-      <div className="mb-4 flex items-baseline justify-between border-b-2 border-ink pb-2">
-        <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Tus quizzes</h1>
-        {quizzes && <span className="font-mono text-sm text-ink-soft">{quizzes.length}</span>}
+      <div className="mb-4 flex items-baseline justify-between border-b-2 border-white/25 pb-2">
+        <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Tus quizzes</h1>
+        {quizzes && <span className="font-mono text-sm text-stage-soft">{quizzes.length}</span>}
       </div>
 
-      {error && <p className="mb-4 rounded-md border-2 border-bad bg-bad/10 p-3 font-semibold text-bad">{error}</p>}
-      {quizzes === null && !error && <p className="py-10 text-ink-soft">Cargando…</p>}
+      {error && <p className="mb-4 rounded-xl bg-bad p-3 font-bold text-white shadow-3d-sm">{error}</p>}
+      {quizzes === null && !error && <p className="py-10 text-stage-soft">Cargando…</p>}
       {quizzes?.length === 0 && (
         <div className="py-16 text-center">
           <p className="text-lg font-semibold">Todavía no hay nada aquí.</p>
-          <p className="mt-1 text-ink-soft">Crea un quiz y lánzalo en clase.</p>
+          <p className="mt-1 text-stage-soft">Crea un quiz y lánzalo cuando todos estén listos.</p>
         </div>
       )}
 
-      <ul className="divide-y-2 divide-ink/10">
+      <ul className="space-y-3">
         {quizzes?.map((quiz) => (
-          <li key={quiz.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:gap-6">
+          <li key={quiz.id} className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-6">
             <div className="min-w-0 flex-1">
               <Link
                 to={`/host/quizzes/${quiz.id}`}
@@ -94,18 +98,27 @@ export default function QuizList() {
               <button
                 onClick={() => handleStart(quiz)}
                 disabled={starting !== null || quiz.questionCount === 0}
-                className="btn btn-primary flex-1 sm:flex-none"
+                className="btn btn-accent flex-1 sm:flex-none"
               >
-                {starting === quiz.id ? 'Creando…' : 'Lanzar ▸'}
+                {starting === quiz.id ? (
+                  'Creando…'
+                ) : (
+                  <>
+                    <PlayFill className="size-5" />
+                    Lanzar
+                  </>
+                )}
               </button>
-              <Link to={`/host/quizzes/${quiz.id}`} className="btn btn-plain">
+              <Link to={`/host/quizzes/${quiz.id}`} className="btn btn-light">
+                <PencilSquare />
                 Editar
               </Link>
               <button
                 onClick={() => handleDelete(quiz)}
                 aria-label={`Borrar ${quiz.title}`}
-                className="btn btn-plain text-bad"
+                className="btn btn-light text-bad"
               >
+                <Trash3 />
                 Borrar
               </button>
             </div>

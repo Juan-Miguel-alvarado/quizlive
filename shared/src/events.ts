@@ -1,5 +1,8 @@
 import type {
+  Avatar,
+  PlayerReactPayload,
   QuestionType,
+  Reaction,
   HostJoinPayload,
   HostKickPayload,
   PlayerAnswerPayload,
@@ -23,14 +26,18 @@ export interface CountdownView {
 export interface PlayerPublic {
   id: string;
   nickname: string;
+  avatar: Avatar;
   connected: boolean;
 }
 
 export interface ScoreEntry {
   playerId: string;
   nickname: string;
+  avatar: Avatar;
   score: number;
   rank: number;
+  /** Aciertos seguidos hasta ahora (para mostrar la racha 🔥 en la clasificación). */
+  streak: number;
   /** Puestos que subió (positivo) o bajó (negativo) desde la pregunta anterior. */
   delta: number;
 }
@@ -52,6 +59,7 @@ export interface RevealView {
   index: number;
   correctIndices: number[];
   distribution: number[]; // cuántos marcaron cada opción
+  explanation: string | null; // dato o versículo que el anfitrión escribió para esta pregunta
 }
 
 export interface AnswerResult {
@@ -67,6 +75,7 @@ export interface AnswerResult {
 export interface PlayerSelf {
   id: string;
   nickname: string;
+  avatar: Avatar;
   score: number;
   rank: number;
   answer: number[] | null; // opciones elegidas en la pregunta actual
@@ -105,6 +114,7 @@ export interface ClientToServerEvents {
   ) => void;
   'player:rejoin': (p: PlayerRejoinPayload, ack: Ack<{ state: GameSnapshot }>) => void;
   'player:answer': (p: PlayerAnswerPayload, ack: Ack) => void;
+  'player:react': (p: PlayerReactPayload) => void; // sin ack: puede llegar muy seguido
 }
 
 export interface ServerToClientEvents {
@@ -118,6 +128,8 @@ export interface ServerToClientEvents {
   'game:podium': (p: { top: ScoreEntry[]; me: { score: number; rank: number } | null }) => void;
   'game:state': (s: GameSnapshot) => void;
   'game:closed': (p: { reason: string }) => void;
+  /** Solo al anfitrión: reacciones acumuladas desde el último envío. */
+  'host:reactions': (p: { counts: Partial<Record<Reaction, number>> }) => void;
 }
 
 export interface CreateGameResponse {
