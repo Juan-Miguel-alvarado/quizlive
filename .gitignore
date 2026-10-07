@@ -3,3 +3,7 @@ dist
 .env
 server/src/generated
 *.log
+# Vercel CLI: enlace del proyecto y token local (.env.production sí va en el repo)
+.vercel
+.env.local
+.env*.local
