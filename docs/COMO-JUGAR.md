@@ -47,6 +47,5 @@ Tu celular te dice **cuál era la correcta** y luego aparece una explicación o 
 
 ### Trucos
 
-- **¿Letra pequeña?** Toca el botón **🔍 Letra** de arriba a la derecha para agrandarla.
 - **¿Se cerró la página?** Vuelve a abrirla: tu puntaje se guarda.
 - Entre preguntas puedes mandar **👏 🙏 ❤️** a la pantalla grande.

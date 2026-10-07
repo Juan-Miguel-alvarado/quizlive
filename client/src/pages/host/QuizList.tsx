@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import {
   BoxArrowLeft,
   CheckLg,
-  ClockHistory,
   Copy,
   Pencil,
   PencilSquare,
@@ -82,10 +81,6 @@ export default function QuizList() {
       <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
         <Wordmark />
         <div className="flex flex-wrap gap-2">
-          <Link to="/host/history" className="btn btn-plain">
-            <ClockHistory />
-            Partidas jugadas
-          </Link>
           <button
             onClick={() => {
               hostSession.clear();

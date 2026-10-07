@@ -212,11 +212,11 @@ Las migraciones están en `server/prisma/migrations/` y se aplican solas al arra
   - Antes de agregar lo pegado se ve una vista previa, con los problemas marcados.
 - `client/src/lib/`: `socket.ts` (un único socket y acciones con ack), `useGame.ts`, `api.ts` (REST),
   `session.ts` (localStorage), `sound.ts` (efectos WebAudio, solo en la TV), `music.ts`
-  (música de la TV), `textSize.ts` (botón "Letra"), `useServerWakeup.ts`.
+  (música de la TV), `useServerWakeup.ts`.
 - Iconos de interfaz: Bootstrap Icons vía `react-bootstrap-icons` (solo se empaquetan los que se usan).
   Los emojis se reservan para avatares y reacciones.
 - Accesibilidad para todas las edades:
-  - En el celular el texto base es 112,5 %, y con el botón "Letra" 131 %.
+  - En el celular el texto base es 112,5 %.
   - Cada opción tiene color, figura y letra (A/B/C/D).
   - Textos claros ("¡Prepárate!", "Elige una respuesta").
   - Resultado con ícono ✓ / ✗ / ⏱ y vibración.

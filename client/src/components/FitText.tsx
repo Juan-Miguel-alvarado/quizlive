@@ -11,12 +11,14 @@ export function FitText({
   min = 12,
   className = '',
   align = 'center',
+  nowrap = false,
 }: {
   text: string;
   max?: number; // px
   min?: number; // px
   className?: string;
   align?: 'center' | 'left';
+  nowrap?: boolean; // una sola línea, sin partir palabras (p. ej. una dirección web)
 }) {
   const box = useRef<HTMLDivElement>(null);
   const inner = useRef<HTMLSpanElement>(null);
@@ -51,7 +53,10 @@ export function FitText({
       ref={box}
       className={`flex min-h-0 min-w-0 items-center overflow-hidden ${align === 'center' ? 'justify-center text-center' : 'justify-start text-left'} ${className}`}
     >
-      <span ref={inner} className="block w-full leading-[1.12] text-balance break-words">
+      <span
+        ref={inner}
+        className={`block leading-[1.12] ${nowrap ? 'whitespace-nowrap' : 'w-full text-balance break-words'}`}
+      >
         {text}
       </span>
     </div>

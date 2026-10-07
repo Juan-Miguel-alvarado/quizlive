@@ -93,7 +93,10 @@ export default function TvScreen() {
       className={`flex h-dvh flex-col overflow-hidden ${idleCursor ? 'cursor-none' : ''}`}
     >
       <ConnectionBanner connected={game.connected} />
-      <Reactions rightOnly={snap.phase === 'lobby'} />
+      {/* Solo donde se puede reaccionar: al empezar la serie, las burbujas que quedaban se van. */}
+      {(snap.phase === 'lobby' || snap.phase === 'leaderboard' || snap.phase === 'podium') && (
+        <Reactions rightOnly={snap.phase === 'lobby'} />
+      )}
       {snap.phase === 'podium' && <Confetti pieces={260} />}
 
       {/* Los únicos controles: solo en el lobby y fuera de pantalla completa. */}
@@ -161,9 +164,10 @@ function useIdleCursor() {
 }
 
 function TvLobby({ snap }: { snap: GameSnapshot }) {
-  const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
   const joinUrl = `${PUBLIC_URL}/${snap.pin}`;
   const joinHost = new URL(PUBLIC_URL).host;
+  // Solo si lo que se anuncia es localhost (en desarrollo, sin VITE_PUBLIC_URL).
+  const isLocalhost = /^(localhost|127\.0\.0\.1)(:|$)/.test(joinHost);
   // Los nombres se achican según cuántos hay, para que todos quepan (con muchos, los nuevos primero).
   const n = snap.players.length;
   const compact = n > 40;
@@ -175,7 +179,7 @@ function TvLobby({ snap }: { snap: GameSnapshot }) {
       <section className="card flex w-full items-center gap-[3vw] px-[3vw] py-[3vh]">
         <div className="flex min-w-0 flex-1 flex-col">
           <FitText text="Entra desde tu celular en" max={60} align="left" className="h-[4.5vh] font-bold text-ink-soft" />
-          <FitText text={joinHost} max={110} align="left" className="h-[9vh] font-black text-stage" />
+          <FitText text={joinHost} max={110} align="left" nowrap className="h-[9vh] font-black text-stage" />
           {isLocalhost && (
             <p className="mt-[1vh] flex items-start gap-2 rounded-lg bg-opt-yellow/20 px-2 py-1 text-[1.8vh] text-ink">
               <ExclamationTriangleFill className="mt-0.5 shrink-0 text-opt-yellow" />

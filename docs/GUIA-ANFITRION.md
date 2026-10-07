@@ -94,5 +94,5 @@ Tu panel tiene **un botón grande** que cambia según el momento:
 ## Al terminar
 
 - **«Jugar otra vez»** reinicia la partida con las mismas personas (puntaje a cero).
-- En **Partidas jugadas** (`/host/history`) está el informe: aciertos por pregunta, tiempo medio y tabla
+- El informe de cada partida sigue guardándose (ya no hay botón; se abre escribiendo `/host/history`): aciertos por pregunta, tiempo medio y tabla
   por jugador. Con un botón se crea una **trivia de repaso** con las preguntas que menos del 60 % acertó.

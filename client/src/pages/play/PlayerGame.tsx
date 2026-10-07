@@ -10,8 +10,6 @@ import {
   StopwatchFill,
   TrophyFill,
   XCircleFill,
-  ZoomIn,
-  ZoomOut,
 } from 'react-bootstrap-icons';
 import { Link, Navigate } from 'react-router';
 import { CenteredMessage } from '../../components/CenteredMessage';
@@ -25,7 +23,6 @@ import { imageUrl } from '../../lib/images';
 import { playerSession } from '../../lib/session';
 import { gameActions } from '../../lib/socket';
 import { buzz } from '../../lib/sound';
-import { textSize } from '../../lib/textSize';
 import { useGame } from '../../lib/useGame';
 
 type Game = ReturnType<typeof useGame>;
@@ -38,7 +35,6 @@ export default function PlayerGame() {
       : { ok: false, error: 'Sin sesión' },
   );
 
-  const [bigText, setBigText] = useState(() => textSize.big);
   const snap = game.snap;
   const result = snap?.phase === 'reveal' ? snap.me?.lastResult : null;
   // El celular vibra en vez de sonar: 30 teléfonos pitando en un salón es un caos.
@@ -76,17 +72,6 @@ export default function PlayerGame() {
         ) : (
           <span className="font-bold whitespace-nowrap">PIN {snap.pin}</span>
         )}
-        <button
-          onClick={() => setBigText(textSize.toggle())}
-          aria-pressed={bigText}
-          title={bigText ? 'Letra normal' : 'Letra más grande'}
-          className={`ml-auto flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-black ${
-            bigText ? 'bg-stage text-white' : 'bg-paper text-ink hover:bg-paper-2'
-          }`}
-        >
-          {bigText ? <ZoomOut className="size-5" /> : <ZoomIn className="size-5" />}
-          Letra
-        </button>
       </header>
 
       <main className="flex flex-1 flex-col p-4">

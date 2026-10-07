@@ -50,14 +50,11 @@ body,
   min-height: 100dvh;
 }
 
-/* En el celular todo es un poco más grande (lo usan desde niños hasta abuelos), y el botón «Letra»
-   del jugador lo agranda más (ver lib/textSize.ts). El proyector no cambia: su diseño ya es grande. */
+/* En el celular todo es un poco más grande (lo usan desde niños hasta abuelos). El proyector no
+   cambia: su diseño ya es grande. */
 @media (max-width: 40rem) {
   html {
     font-size: 112.5%;
-  }
-  html[data-big-text] {
-    font-size: 131.25%;
   }
 }
 

@@ -91,7 +91,7 @@ CI (`.github/workflows/ci.yml`) ejecuta typecheck, tests, `prisma migrate deploy
 - **Reacciones:** solo en `lobby`, `leaderboard` y `podium`; una cada 1,5 s por jugador. En el proyector (`components/Reactions.tsx`) suben en burbujas grandes **por los bordes** (como mucho 3 por emoji y envío, con "×N"), y en el lobby solo por la derecha para no tapar el QR.
 - **Explicación/versículo:** `Question.explanation` (opcional, ≤300 caracteres). Va en `RevealView.explanation`. En el CSV es la 9.ª columna; los CSV de 8 columnas siguen siendo válidos. Al añadir campos a `Question`, actualiza también los `select` de `routes/quizzes.ts`, `routes/games.ts` y `routes/history.ts` (quiz de repaso).
 - **Avatares:** son un enum cerrado (`AVATARS` en `shared/src/schemas.ts`). Los nombres del dado (`shared/src/names.ts`) usan adjetivos que valen para masculino y femenino.
-- **Tamaño de letra:** en el celular (`max-width: 40rem`) el texto base es 112,5 %, y con el botón "Letra" (`data-big-text` en `<html>`) es 131 %. El proyector no se escala. Usa unidades `rem`.
+- **Tamaño de letra:** en el celular (`max-width: 40rem`) el texto base es 112,5 %. El proyector no se escala. Usa unidades `rem`. El botón "Letra" se quitó a pedido del usuario (no se entendía): no lo vuelvas a añadir.
 - **Rutas del cliente:**
   - `/:pin` (solo 6 dígitos) es la entrada corta que lleva el QR.
   - `/tv/:pin` es la TV (`pages/tv/TvScreen.tsx`) y `/host/game/:pin` el moderador (`pages/host/Moderator.tsx`).

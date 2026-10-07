@@ -4,9 +4,6 @@ import { createBrowserRouter, Navigate, RouterProvider, useParams } from 'react-
 import './index.css';
 import Home from './pages/Home';
 import PlayerGame from './pages/play/PlayerGame';
-import { textSize } from './lib/textSize';
-
-textSize.init();
 
 /** Ruta corta para unirse (/482913): es la que lleva el QR y la más fácil de dictar. */
 function JoinByPin() {
