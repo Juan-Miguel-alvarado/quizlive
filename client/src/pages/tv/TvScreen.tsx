@@ -275,17 +275,18 @@ function TvQuestion({ game }: { game: GameState }) {
       </div>
 
       {/* Sin imagen, la pregunta se queda con todo el espacio libre; con imagen, lo comparte. */}
-      <div className={`card flex shrink-0 px-[2.5vw] py-[2vh] ${hasImage ? 'h-[18vh]' : 'min-h-[22vh] flex-1'}`}>
+      <div className={`card flex shrink-0 px-[2.5vw] py-[2vh] ${hasImage ? 'h-[16vh]' : 'min-h-[22vh] flex-1'}`}>
         <FitText text={q.text} max={220} className="h-full w-full font-black tracking-tight" />
       </div>
 
-      {/* Con imagen (como Kahoot): el contador a la izquierda y "respondieron" a la derecha, así la
-          foto usa toda la altura libre. */}
+      {/* Con imagen: el contador grande a la izquierda y la foto con todo el resto del espacio. */}
       {hasImage && (
         <div className="flex min-h-0 flex-1 items-center gap-[2vw]">
-          <div className="flex w-[15vw] shrink-0 justify-center">
-            {!reveal && <TvTimer endsAt={q.endsAt} clockOffset={game.clockOffset} totalSec={q.timeLimitSec} round />}
-          </div>
+          {!reveal && (
+            <div className="flex shrink-0 justify-center">
+              <TvTimer endsAt={q.endsAt} clockOffset={game.clockOffset} totalSec={q.timeLimitSec} round />
+            </div>
+          )}
           <div className="relative h-full min-w-0 flex-1">
             <img
               src={imageUrl(q.imageId!)}
@@ -293,9 +294,8 @@ function TvQuestion({ game }: { game: GameState }) {
               className="absolute inset-0 m-auto max-h-full max-w-full rounded-[2vh] bg-white object-contain shadow-3d-lg"
             />
           </div>
-          <div className="flex w-[15vw] shrink-0 justify-center">
-            {!reveal && <Answered answered={snap.answeredCount} total={snap.players.length} big />}
-          </div>
+          {/* Hueco del mismo ancho que el contador, para que la foto quede centrada. */}
+          {!reveal && <div aria-hidden className="w-[min(13vw,24vh)] shrink-0" />}
         </div>
       )}
 
@@ -307,13 +307,12 @@ function TvQuestion({ game }: { game: GameState }) {
             </div>
           )
         : !hasImage && (
-            <div className="flex h-[11vh] shrink-0 items-center gap-[2vw]">
+            <div className="flex h-[11vh] shrink-0 items-center">
               <TvTimer endsAt={q.endsAt} clockOffset={game.clockOffset} totalSec={q.timeLimitSec} />
-              <Answered answered={snap.answeredCount} total={snap.players.length} />
             </div>
           )}
 
-      <div className={`grid shrink-0 grid-cols-2 grid-rows-2 gap-[1.6vh] ${hasImage ? 'h-[30vh]' : 'h-[36vh]'}`}>
+      <div className={`grid shrink-0 grid-cols-2 grid-rows-2 gap-[1.6vh] ${hasImage ? 'h-[28vh]' : 'h-[36vh]'}`}>
         {q.options.map((opt, i) => {
           const style = optionStyle(q.type, i);
           const correct = reveal?.correctIndices.includes(i);
@@ -350,17 +349,6 @@ function TvQuestion({ game }: { game: GameState }) {
         })}
       </div>
     </div>
-  );
-}
-
-/** "8 de 12 respondieron". */
-function Answered({ answered, total, big = false }: { answered: number; total: number; big?: boolean }) {
-  return (
-    <p className={`shrink-0 leading-none ${big ? 'text-center' : 'text-right'}`}>
-      <span className={`${big ? 'block text-[min(7vw,13vh)]' : 'text-[8vh]'} font-black tabular-nums drop-shadow`}>{answered}</span>
-      <span className={`${big ? 'text-[4vh]' : 'text-[4.5vh]'} font-black text-stage-soft`}>{big ? '' : ' '}de {total}</span>
-      <span className={`block ${big ? 'pt-[0.5vh] text-[3vh]' : 'text-[2.6vh]'} font-bold text-stage-soft`}>respondieron</span>
-    </p>
   );
 }
 

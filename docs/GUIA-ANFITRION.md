@@ -47,8 +47,8 @@ Se usan **tres pantallas**:
 3. **Abre la pantalla TV** en el computador del televisor. Desde tu panel, pulsa **«Abrir pantalla TV»** si
    estás en ese computador, o copia el link con el botón del portapapeles y ábrelo allí.
    - **Pantalla completa:** doble clic o tecla **F**.
-   - **Sonido:** haz **un clic** en la TV. El navegador no deja sonar nada hasta entonces. En el lobby
-     suena música alegre y durante cada pregunta, una de cuenta atrás. Los botones de música y efectos
+   - **Sonido:** haz **un clic** en la TV. El navegador no deja sonar nada hasta entonces. La música suena
+     en el lobby y durante cada pregunta. Los botones de música y efectos
      solo se ven en el lobby.
 4. **Comparte el link** con **«Compartir link»** (abre WhatsApp u otra app). También pueden escanear el
    QR de la TV.

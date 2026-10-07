@@ -228,7 +228,8 @@ Las migraciones están en `server/prisma/migrations/` y se aplican solas al arra
   - **Respuestas** con los colores de Kahoot (`opt-red/blue/yellow/green`). El amarillo lleva texto oscuro por contraste.
   - **Podio** en `gold`, `silver` y `bronze`.
 - **Música** (`lib/music.ts`):
-  - Secuenciador WebAudio con composiciones propias, sin archivos: `lobby` (alegre, 118 bpm) y `question` (tensión, 150 bpm). Programa las notas con antelación (*lookahead*), con fundidos.
+  - Reproduce `client/public/music/fondo.mp3` (la canción que eligió el usuario: ~2 min, 128 kbps, ~2 MB) en bucle durante `lobby` y `question`, con fundidos. En las demás fases se pausa y luego sigue por donde iba.
+  - Solo la TV la descarga, la primera vez que suena; los celulares nunca la piden.
   - Comparte el `AudioContext` con `sound.ts` (`getAudioContext()`), que se desbloquea con el primer clic o tecla en la TV. Mientras tanto aparece "Haz clic en la pantalla para activar el sonido".
   - Tiene su propio botón, recordado en `quizlive:music`. Nunca suena en los celulares.
 

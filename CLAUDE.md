@@ -98,8 +98,8 @@ CI (`.github/workflows/ci.yml`) ejecuta typecheck, tests, `prisma migrate deploy
   - Las pantallas `/host/*` y `/tv` se cargan con `lazy` para que los jugadores descarguen menos.
 - **Pantalla TV:**
   - Sin botones durante el juego: solo en el lobby salen pantalla completa, música y efectos. También funcionan el doble clic y la tecla F, y el cursor se oculta solo.
-  - El tamaño del texto depende de la longitud de la pregunta y de las opciones (`questionSize` y `optionSize`).
-  - Con la variante `short:` (alto de 800 px o menos, definida en `index.css`) todo cabe en una TV de 1280×720. Pregunta, contador y opciones son `shrink-0`; lo que cede es el hueco de la imagen.
+  - Todo lo más grande posible: medidas en `vh`/`vw` y `components/FitText.tsx`, que busca el mayor tamaño de letra que cabe en su caja (pregunta, opciones, versículo, PIN…).
+  - Con imagen, el contador va a la izquierda y la foto ocupa el resto; la TV **no** muestra cuántos respondieron (a pedido del usuario; el moderador sí).
 - **Pegado rápido** (`shared/src/paste.ts`):
   - `parsePastedQuestion` recibe 5 líneas (pregunta y 4 opciones) o 4 (solo las opciones).
   - `parsePastedQuestions` recibe bloques del Word.
@@ -112,7 +112,7 @@ CI (`.github/workflows/ci.yml`) ejecuta typecheck, tests, `prisma migrate deploy
   - Lo que hay que leer va en `.card` blanca, donde sí van `text-ink`/`text-ink-soft`.
   - Botones: `btn-primary` (blanco), `btn-accent` (verde), `btn-dark`, `btn-plain` (sobre morado) y `btn-light` (dentro de tarjetas). Sombras `shadow-3d*`, sin bordes negros.
   - El amarillo de respuesta lleva texto oscuro.
-- **Música:** `lib/music.ts` (secuenciador WebAudio, composiciones propias). Solo suena en la **TV** y comparte el `AudioContext` con `sound.ts` (`getAudioContext()`). `TvScreen` decide la canción por fase: `lobby`, `question` o silencio. El moderador no suena.
+- **Música:** `lib/music.ts` reproduce `client/public/music/fondo.mp3`, la canción que eligió el usuario (no vuelvas a la música sintetizada). Solo suena en la **TV** y comparte el `AudioContext` con `sound.ts` (`getAudioContext()`). `TvScreen` decide por fase: suena en `lobby` y `question`; en las demás se pausa y luego sigue por donde iba. El moderador no suena.
 - **Margen de reacciones:** el lobby de la TV reserva 7,5 rem a cada lado (`max-w-[min(90rem,calc(100%-15rem))]`) para las burbujas de reacciones; no lo quites.
 - **Iconos:** usa Bootstrap Icons (`react-bootstrap-icons`) para todo lo que sea interfaz (botones, estados, flechas). Los emojis quedan solo para avatares y reacciones. No uses símbolos unicode como ▸ ✓ ✕.
 - **Dirección pública:** los jugadores entran por **quizlivee.vercel.app**. Netlify (quizlivee.netlify.app) sigue como respaldo y su QR también apunta a Vercel. El QR y el link usan `PUBLIC_URL` (`lib/api.ts`) = `VITE_PUBLIC_URL`; en desarrollo, la propia página.
