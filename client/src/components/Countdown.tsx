@@ -18,7 +18,7 @@ export function CountdownCircle({ endsAt, clockOffset, totalSec, size = 'lg', au
   endsAt: number;
   clockOffset: number;
   totalSec: number;
-  size?: 'sm' | 'lg';
+  size?: 'sm' | 'lg' | 'tv'; // tv: proporcional a la pantalla
   audible?: boolean; // un tic por segundo en los últimos 5 (pantalla del anfitrión)
 }) {
   const remaining = useRemainingMs(endsAt, clockOffset);
@@ -34,7 +34,9 @@ export function CountdownCircle({ endsAt, clockOffset, totalSec, size = 'lg', au
   const urgent = remaining <= 5000 && totalSec > 5;
   return (
     <div
-      className={`relative shrink-0 ${size === 'lg' ? 'size-24 sm:size-32 xl:size-40' : 'size-12'} ${
+      className={`relative shrink-0 ${
+        size === 'tv' ? 'size-[22vh]' : size === 'lg' ? 'size-24 sm:size-32 xl:size-40' : 'size-12'
+      } ${
         urgent ? 'animate-[pulse-ring_1s_ease-in-out_infinite]' : ''
       }`}
       role="timer"
@@ -47,7 +49,7 @@ export function CountdownCircle({ endsAt, clockOffset, totalSec, size = 'lg', au
           cy="50"
           r={r - 8}
           fill="none"
-          strokeWidth={size === 'lg' ? 10 : 14}
+          strokeWidth={size === 'sm' ? 14 : 10}
           className={`transition-[stroke-dashoffset] duration-100 ease-linear ${urgent ? 'stroke-bad' : 'stroke-white'}`}
           strokeDasharray={2 * Math.PI * (r - 8)}
           strokeDashoffset={2 * Math.PI * (r - 8) * (1 - fraction)}
@@ -55,7 +57,7 @@ export function CountdownCircle({ endsAt, clockOffset, totalSec, size = 'lg', au
       </svg>
       <span
         className={`absolute inset-0 grid place-items-center font-black text-white tabular-nums ${
-          size === 'lg' ? 'text-3xl sm:text-5xl xl:text-6xl' : 'text-lg'
+          size === 'tv' ? 'text-[10vh]' : size === 'lg' ? 'text-3xl sm:text-5xl xl:text-6xl' : 'text-lg'
         }`}
       >
         {seconds}
@@ -64,35 +66,3 @@ export function CountdownCircle({ endsAt, clockOffset, totalSec, size = 'lg', au
   );
 }
 
-/**
- * Tiempo restante para la TV: número enorme y una barra que se vacía, en rojo los últimos 5 s.
- * Suena un tic por segundo en los últimos 5 (solo la pantalla que proyecta tiene sonido).
- */
-export function TimerBar({ endsAt, clockOffset, totalSec }: { endsAt: number; clockOffset: number; totalSec: number }) {
-  const remaining = useRemainingMs(endsAt, clockOffset);
-  const lastTick = useRef(0);
-  const seconds = Math.ceil(remaining / 1000);
-  useEffect(() => {
-    if (seconds > 5 || seconds <= 0 || lastTick.current === seconds) return;
-    lastTick.current = seconds;
-    sound.tick();
-  }, [seconds]);
-  const urgent = remaining <= 5000;
-  return (
-    <div className="flex items-center gap-5" role="timer" aria-label={`${seconds} segundos`}>
-      <span
-        className={`grid size-24 shrink-0 place-items-center rounded-full text-6xl font-black tabular-nums shadow-3d-lg xl:size-32 xl:text-7xl short:size-20 short:text-5xl ${
-          urgent ? 'animate-[pulse-ring_1s_ease-in-out_infinite] bg-bad text-white' : 'bg-white text-stage-dark'
-        }`}
-      >
-        {seconds}
-      </span>
-      <div className="h-6 flex-1 overflow-hidden rounded-full bg-black/30 xl:h-8">
-        <div
-          className={`h-full rounded-full transition-[width] duration-100 ease-linear ${urgent ? 'bg-bad' : 'bg-white'}`}
-          style={{ width: `${(remaining / (totalSec * 1000)) * 100}%` }}
-        />
-      </div>
-    </div>
-  );
-}

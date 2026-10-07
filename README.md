@@ -39,6 +39,7 @@ pnpm db:up        # Postgres en Docker (puerto 5433)
 pnpm db:migrate   # aplica las migraciones
 pnpm dev          # servidor :3001 + cliente :5173
 pnpm --filter server seed:biblia   # opcional: carga la trivia «Día de la Biblia»
+pnpm --filter server images:biblia # opcional: una foto para cada pregunta
 ```
 
 | Qué | Dónde |

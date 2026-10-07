@@ -43,6 +43,7 @@ pnpm test:e2e         # partida completa por sockets; necesita el servidor corri
 pnpm bots <PIN> [n]   # bots con avatar, nombre del dado y reacciones
 pnpm --filter server test:load 120 --finish   # carga (SERVER_URL=… para producción)
 pnpm --filter server seed:biblia              # carga la trivia "Día de la Biblia" por la API (no la duplica)
+pnpm --filter server images:biblia            # le pone una foto (Unsplash) a cada pregunta; SERVER_URL=… para producción
 pnpm --filter client build
 ```
 

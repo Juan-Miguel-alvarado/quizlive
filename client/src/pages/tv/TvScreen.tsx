@@ -3,6 +3,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowsFullscreen,
+  CaretDownFill,
+  CaretUpFill,
   CheckCircleFill,
   ExclamationTriangleFill,
   LightbulbFill,
@@ -17,9 +19,8 @@ import { useParams } from 'react-router';
 import { CenteredMessage } from '../../components/CenteredMessage';
 import { Confetti } from '../../components/Confetti';
 import { ConnectionBanner } from '../../components/ConnectionBanner';
-import { CountdownCircle, TimerBar } from '../../components/Countdown';
-import { GetReady } from '../../components/GetReady';
-import { Leaderboard } from '../../components/Leaderboard';
+import { CountdownCircle, useRemainingMs } from '../../components/Countdown';
+import { FitText } from '../../components/FitText';
 import { OptionShape, optionStyle, QUESTION_TYPE_HINTS } from '../../components/OptionShape';
 import { Podium } from '../../components/Podium';
 import { Reactions } from '../../components/Reactions';
@@ -128,7 +129,7 @@ export default function TvScreen() {
         <p className="pill fixed bottom-6 left-1/2 z-40 -translate-x-1/2 text-lg">Haz clic en la pantalla para activar el sonido</p>
       )}
 
-      <main className="flex min-h-0 flex-1 flex-col px-6 py-5 xl:px-12 xl:py-8 short:py-4">
+      <main className="flex min-h-0 flex-1 flex-col px-[2.5vw] py-[2.5vh]">
         {snap.phase === 'lobby' && <TvLobby snap={snap} />}
         {snap.phase === 'countdown' && snap.countdown && <TvCountdown game={game} />}
         {inQuestion && <TvQuestion game={game} />}
@@ -163,25 +164,20 @@ function TvLobby({ snap }: { snap: GameSnapshot }) {
   const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
   const joinUrl = `${PUBLIC_URL}/${snap.pin}`;
   const joinHost = new URL(PUBLIC_URL).host;
-  const compact = snap.players.length > 40;
+  // Los nombres se achican según cuántos hay, para que todos quepan (con muchos, los nuevos primero).
+  const n = snap.players.length;
+  const compact = n > 40;
+  const chip = n <= 10 ? 'px-[1.4vw] py-[0.8vh] text-[4.2vh]' : n <= 20 ? 'px-[1.2vw] py-[0.6vh] text-[3.2vh]' : 'px-[1vw] py-[0.4vh] text-[2.6vh]';
   const players = compact ? [...snap.players].reverse() : snap.players;
   return (
     // Margen a los lados para las burbujas de reacciones (components/Reactions.tsx).
-    <div className="mx-auto flex min-h-0 w-full max-w-[min(90rem,calc(100%-15rem))] flex-1 flex-col gap-6">
-      <section className="card flex w-full items-center gap-8 p-6">
-        <div className="min-w-0 flex-1">
-          <p className="text-xl font-bold text-ink-soft xl:text-2xl">Entra desde tu celular en</p>
-          <p className="text-3xl font-black text-stage xl:text-5xl">
-            {joinHost.split('.').map((part, i) => (
-              <span key={i}>
-                {i > 0 && <wbr />}
-                {i > 0 && '.'}
-                {part}
-              </span>
-            ))}
-          </p>
+    <div className="mx-auto flex min-h-0 w-[calc(100%-14vw)] flex-1 flex-col gap-[2.5vh]">
+      <section className="card flex w-full items-center gap-[3vw] px-[3vw] py-[3vh]">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <FitText text="Entra desde tu celular en" max={60} align="left" className="h-[4.5vh] font-bold text-ink-soft" />
+          <FitText text={joinHost} max={110} align="left" className="h-[9vh] font-black text-stage" />
           {isLocalhost && (
-            <p className="mt-2 flex items-start gap-2 rounded-lg bg-opt-yellow/20 px-2 py-1 text-sm text-ink">
+            <p className="mt-[1vh] flex items-start gap-2 rounded-lg bg-opt-yellow/20 px-2 py-1 text-[1.8vh] text-ink">
               <ExclamationTriangleFill className="mt-0.5 shrink-0 text-opt-yellow" />
               <span>
                 Los celulares no abren <code>localhost</code>: abre la TV con la IP de esta computadora.
@@ -189,36 +185,38 @@ function TvLobby({ snap }: { snap: GameSnapshot }) {
             </p>
           )}
         </div>
-        <div className="shrink-0 border-l-2 border-ink/10 pl-8 text-center">
-          <p className="text-xl font-bold text-ink-soft xl:text-2xl">PIN del juego</p>
-          <p className="text-7xl font-black tracking-tight tabular-nums xl:text-9xl">
+        <div className="shrink-0 border-l-2 border-ink/10 pl-[3vw] text-center">
+          <p className="text-[3.2vh] font-bold text-ink-soft">PIN del juego</p>
+          <p className="text-[16vh] leading-none font-black tracking-tight tabular-nums">
             {snap.pin.slice(0, 3)} {snap.pin.slice(3)}
           </p>
         </div>
-        <QRCodeSVG value={joinUrl} marginSize={1} fgColor="#1f1f1f" className="size-40 shrink-0 xl:size-56" />
+        <QRCodeSVG value={joinUrl} marginSize={1} fgColor="#1f1f1f" className="size-[28vh] shrink-0" />
       </section>
 
-      <div className="flex items-center justify-between gap-4">
-        <span key={snap.players.length} className="pill animate-[bump_300ms] text-3xl xl:text-5xl">
-          <PeopleFill className="size-8 text-stage xl:size-11" />
+      <div className="flex items-center justify-between gap-[2vw]">
+        <span key={snap.players.length} className="pill animate-[bump_300ms] px-[2vw] py-[1vh] text-[6vh]">
+          <PeopleFill className="size-[6vh] text-stage" />
           {snap.players.length}
-          <span className="text-xl font-bold text-ink-soft xl:text-3xl">{snap.players.length === 1 ? 'jugador' : 'jugadores'}</span>
+          <span className="text-[3.5vh] font-bold text-ink-soft">{snap.players.length === 1 ? 'jugador' : 'jugadores'}</span>
         </span>
-        <p className="text-3xl font-black drop-shadow xl:text-4xl">
+        <p className="text-[4.5vh] font-black drop-shadow">
           {snap.players.length === 0 ? 'Esperando jugadores…' : 'Esperando a que inicie el juego…'}
         </p>
       </div>
 
       <ul
         className={`min-h-0 flex-1 overflow-hidden ${
-          compact ? 'grid content-start gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(11rem,1fr))]' : 'flex flex-wrap content-start justify-center gap-3'
+          compact
+            ? 'grid content-start gap-[0.8vh] [grid-template-columns:repeat(auto-fill,minmax(14vw,1fr))]'
+            : 'flex flex-wrap content-start justify-center gap-[1.4vh]'
         }`}
       >
         {players.map((p) => (
           <li
             key={p.id}
-            className={`flex animate-[pop_250ms_both] items-center gap-2 rounded-full font-black shadow-3d-sm ${
-              compact ? 'px-3 py-0.5 text-base' : 'px-5 py-2 text-2xl xl:text-3xl'
+            className={`flex animate-[pop_250ms_both] items-center gap-[0.6vw] rounded-full font-black shadow-3d-sm ${
+              compact ? 'px-[1vw] py-[0.3vh] text-[2.3vh]' : chip
             } ${p.connected ? 'bg-white text-ink' : 'bg-white/30 text-white'}`}
           >
             <span aria-hidden>{p.avatar}</span>
@@ -233,44 +231,41 @@ function TvLobby({ snap }: { snap: GameSnapshot }) {
 /** "¡Prepárate!" — y si empieza una serie, su nombre en grande. */
 function TvCountdown({ game }: { game: GameState }) {
   const c = game.snap!.countdown!;
-  if (c.inSeries.index > 0) return <GetReady countdown={c} clockOffset={game.clockOffset} size="lg" />;
+  const startsSeries = c.inSeries.index === 0;
   return (
-    <div className="flex flex-1 animate-[pop_400ms_both] flex-col items-center justify-center gap-6 text-center">
-      <p className="pill text-2xl xl:text-4xl">
-        Serie {c.series.index + 1} de {c.series.total}
+    <div className="flex flex-1 animate-[pop_400ms_both] flex-col items-center justify-center gap-[3vh] text-center">
+      <p className="pill px-[2vw] py-[1vh] text-[4.5vh]">
+        {startsSeries
+          ? `Serie ${c.series.index + 1} de ${c.series.total}`
+          : `Pregunta ${c.inSeries.index + 1} de ${c.inSeries.total}`}
       </p>
-      <h1 className="max-w-6xl text-6xl leading-tight font-black text-balance drop-shadow-lg xl:text-8xl">{c.series.title}</h1>
-      <p className="text-2xl font-bold text-stage-soft xl:text-3xl">
-        {c.inSeries.total} {c.inSeries.total === 1 ? 'pregunta' : 'preguntas'} · {QUESTION_TYPE_HINTS[c.type]}
+      <FitText
+        text={startsSeries ? c.series.title : '¡Prepárate!'}
+        max={260}
+        className="h-[28vh] w-[88vw] font-black drop-shadow-lg"
+      />
+      <p className="text-[4vh] font-bold text-stage-soft">
+        {startsSeries && `${c.inSeries.total} ${c.inSeries.total === 1 ? 'pregunta' : 'preguntas'} · `}
+        {QUESTION_TYPE_HINTS[c.type]}
       </p>
-      <CountdownCircle endsAt={c.endsAt} clockOffset={game.clockOffset} totalSec={QUESTION_COUNTDOWN_SEC} />
+      <CountdownCircle endsAt={c.endsAt} clockOffset={game.clockOffset} totalSec={QUESTION_COUNTDOWN_SEC} size="tv" />
     </div>
   );
 }
 
-/** Tamaño de la pregunta según su largo: siempre entera, sin cortes ni scroll. */
-function questionSize(text: string) {
-  if (text.length <= 50) return 'text-5xl xl:text-7xl short:text-6xl';
-  if (text.length <= 100) return 'text-4xl xl:text-6xl short:text-5xl';
-  if (text.length <= 180) return 'text-3xl xl:text-5xl short:text-4xl';
-  return 'text-2xl xl:text-4xl short:text-3xl';
-}
-
-function optionSize(longest: number) {
-  if (longest <= 25) return 'text-3xl xl:text-5xl short:text-4xl';
-  if (longest <= 50) return 'text-2xl xl:text-4xl short:text-3xl';
-  return 'text-xl xl:text-3xl short:text-2xl';
-}
-
+/**
+ * La pregunta ocupa toda la pantalla: la letra de la pregunta y de cada opción se ajusta sola al
+ * tamaño más grande que quepa (FitText). Medidas en vh/vw para cualquier televisor.
+ */
 function TvQuestion({ game }: { game: GameState }) {
   const snap = game.snap!;
   const q = snap.question!;
   const reveal = snap.phase === 'reveal' ? snap.reveal : null;
-  const longest = Math.max(...q.options.map((o) => o.length));
+  const hasImage = !!q.imageId;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 xl:gap-6 short:gap-3">
-      <div className="flex shrink-0 items-center justify-between gap-4 text-xl font-black text-stage-soft xl:text-3xl short:text-xl">
+    <div className="flex min-h-0 flex-1 flex-col gap-[1.8vh]">
+      <div className="flex shrink-0 items-center justify-between gap-[2vw] text-[3vh] leading-none font-black text-stage-soft">
         <span className="truncate">
           Serie {q.series.index + 1} · {q.series.title}
         </span>
@@ -279,40 +274,46 @@ function TvQuestion({ game }: { game: GameState }) {
         </span>
       </div>
 
-      {/* Nada de lo de abajo se encoge: si falta espacio, cede el hueco de la imagen. */}
-      <div className="card flex min-h-[18%] shrink-0 items-center justify-center px-8 py-5 text-center short:py-3">
-        <h1 className={`leading-tight font-black tracking-tight text-balance ${questionSize(q.text)}`}>{q.text}</h1>
+      {/* Sin imagen, la pregunta se queda con todo el espacio libre; con imagen, lo comparte. */}
+      <div className={`card flex shrink-0 px-[2.5vw] py-[2vh] ${hasImage ? 'h-[18vh]' : 'min-h-[22vh] flex-1'}`}>
+        <FitText text={q.text} max={220} className="h-full w-full font-black tracking-tight" />
       </div>
 
-      <div className="relative min-h-0 flex-1">
-        {q.imageId && (
-          <img
-            src={imageUrl(q.imageId)}
-            alt=""
-            className="absolute inset-0 m-auto max-h-full max-w-full rounded-2xl bg-white shadow-3d-lg"
-          />
-        )}
-      </div>
-      {reveal?.explanation && (
-        <div className="shrink-0">
-          <Explanation text={reveal.explanation} />
-        </div>
-      )}
-
-      {!reveal && (
-        <div className="flex shrink-0 items-center gap-6">
-          <div className="min-w-0 flex-1">
-            <TimerBar endsAt={q.endsAt} clockOffset={game.clockOffset} totalSec={q.timeLimitSec} />
+      {/* Con imagen (como Kahoot): el contador a la izquierda y "respondieron" a la derecha, así la
+          foto usa toda la altura libre. */}
+      {hasImage && (
+        <div className="flex min-h-0 flex-1 items-center gap-[2vw]">
+          <div className="flex w-[15vw] shrink-0 justify-center">
+            {!reveal && <TvTimer endsAt={q.endsAt} clockOffset={game.clockOffset} totalSec={q.timeLimitSec} round />}
           </div>
-          <p className="shrink-0 text-right leading-none">
-            <span className="text-6xl font-black tabular-nums drop-shadow xl:text-8xl short:text-5xl">{snap.answeredCount}</span>
-            <span className="text-3xl font-black text-stage-soft xl:text-5xl short:text-3xl"> de {snap.players.length}</span>
-            <span className="block text-xl font-bold text-stage-soft xl:text-2xl short:text-lg">respondieron</span>
-          </p>
+          <div className="relative h-full min-w-0 flex-1">
+            <img
+              src={imageUrl(q.imageId!)}
+              alt=""
+              className="absolute inset-0 m-auto max-h-full max-w-full rounded-[2vh] bg-white object-contain shadow-3d-lg"
+            />
+          </div>
+          <div className="flex w-[15vw] shrink-0 justify-center">
+            {!reveal && <Answered answered={snap.answeredCount} total={snap.players.length} big />}
+          </div>
         </div>
       )}
 
-      <div className="grid shrink-0 grid-cols-2 gap-4 xl:gap-5 short:gap-3">
+      {reveal
+        ? reveal.explanation && (
+            <div className="card flex h-[11vh] shrink-0 animate-[slide-in_350ms_both] items-center gap-[1.5vw] px-[2vw]">
+              <LightbulbFill className="size-[6vh] shrink-0 text-opt-yellow" />
+              <FitText text={reveal.explanation} max={80} align="left" className="h-full flex-1 py-[1vh] font-bold" />
+            </div>
+          )
+        : !hasImage && (
+            <div className="flex h-[11vh] shrink-0 items-center gap-[2vw]">
+              <TvTimer endsAt={q.endsAt} clockOffset={game.clockOffset} totalSec={q.timeLimitSec} />
+              <Answered answered={snap.answeredCount} total={snap.players.length} />
+            </div>
+          )}
+
+      <div className={`grid shrink-0 grid-cols-2 grid-rows-2 gap-[1.6vh] ${hasImage ? 'h-[30vh]' : 'h-[36vh]'}`}>
         {q.options.map((opt, i) => {
           const style = optionStyle(q.type, i);
           const correct = reveal?.correctIndices.includes(i);
@@ -321,24 +322,26 @@ function TvQuestion({ game }: { game: GameState }) {
           const look = !reveal
             ? `${style.bg} ${style.text}`
             : correct
-              ? 'scale-[1.02] bg-good text-white ring-8 ring-white'
+              ? 'scale-[1.02] bg-good text-white ring-[0.8vh] ring-white'
               : 'bg-black/25 text-white/45 shadow-none';
           return (
             <div
               key={i}
-              className={`flex min-h-24 items-center gap-4 rounded-2xl px-6 py-4 font-black shadow-3d-lg transition-all duration-300 xl:min-h-32 xl:px-8 short:min-h-20 short:py-3 ${look} ${optionSize(longest)}`}
+              className={`flex min-h-0 items-center gap-[1.2vw] rounded-[2vh] px-[1.6vw] font-black shadow-3d-lg transition-all duration-300 ${look} ${
+                q.options.length === 2 ? 'row-span-2' : ''
+              }`}
             >
-              <OptionShape shape={style.shape} className="size-10 shrink-0 drop-shadow xl:size-14 short:size-11" />
-              {style.letter && <span className="shrink-0 opacity-70">{style.letter}</span>}
-              <span className="min-w-0 flex-1 leading-tight break-words">{opt}</span>
+              <OptionShape shape={style.shape} className="size-[7vh] shrink-0 drop-shadow" />
+              {style.letter && <span className="shrink-0 text-[5vh] opacity-70">{style.letter}</span>}
+              <FitText text={opt} max={150} align="left" className="h-full flex-1 py-[1.2vh]" />
               {reveal && (
                 <span
-                  className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-1 text-2xl tabular-nums xl:text-4xl ${
+                  className={`flex shrink-0 items-center gap-[0.6vw] rounded-[1.5vh] px-[1vw] py-[0.5vh] text-[5vh] tabular-nums ${
                     correct ? 'bg-white text-good' : 'bg-white/85 text-ink'
                   }`}
                   title={`${votes} ${votes === 1 ? 'persona' : 'personas'}`}
                 >
-                  {correct && <CheckCircleFill className="size-7 xl:size-10" />}
+                  {correct && <CheckCircleFill className="size-[5vh]" />}
                   {votes}
                 </span>
               )}
@@ -350,33 +353,103 @@ function TvQuestion({ game }: { game: GameState }) {
   );
 }
 
-function Explanation({ text }: { text: string }) {
+/** "8 de 12 respondieron". */
+function Answered({ answered, total, big = false }: { answered: number; total: number; big?: boolean }) {
   return (
-    <p className="card flex animate-[slide-in_350ms_both] items-start gap-4 px-6 py-4 text-2xl font-bold xl:text-4xl">
-      <LightbulbFill className="mt-1 size-8 shrink-0 text-opt-yellow xl:size-10" />
-      <span>{text}</span>
+    <p className={`shrink-0 leading-none ${big ? 'text-center' : 'text-right'}`}>
+      <span className={`${big ? 'block text-[min(7vw,13vh)]' : 'text-[8vh]'} font-black tabular-nums drop-shadow`}>{answered}</span>
+      <span className={`${big ? 'text-[4vh]' : 'text-[4.5vh]'} font-black text-stage-soft`}>{big ? '' : ' '}de {total}</span>
+      <span className={`block ${big ? 'pt-[0.5vh] text-[3vh]' : 'text-[2.6vh]'} font-bold text-stage-soft`}>respondieron</span>
     </p>
+  );
+}
+
+/** Tiempo restante: número enorme y barra que se vacía; en rojo los últimos 5 s (con tic). */
+function TvTimer({
+  endsAt,
+  clockOffset,
+  totalSec,
+  round = false,
+}: {
+  endsAt: number;
+  clockOffset: number;
+  totalSec: number;
+  round?: boolean; // solo el círculo, grande (al lado de la imagen)
+}) {
+  const remaining = useRemainingMs(endsAt, clockOffset);
+  const seconds = Math.ceil(remaining / 1000);
+  const lastTick = useRef(0);
+  useEffect(() => {
+    if (seconds > 5 || seconds <= 0 || lastTick.current === seconds) return;
+    lastTick.current = seconds;
+    sound.tick();
+  }, [seconds]);
+  const urgent = remaining <= 5000;
+  const circle = `grid aspect-square shrink-0 place-items-center rounded-full font-black tabular-nums shadow-3d-lg ${
+    urgent ? 'animate-[pulse-ring_1s_ease-in-out_infinite] bg-bad text-white' : 'bg-white text-stage-dark'
+  }`;
+  if (round) {
+    return (
+      <span className={`${circle} size-[min(13vw,24vh)] text-[min(6.5vw,12vh)]`} role="timer" aria-label={`${seconds} segundos`}>
+        {seconds}
+      </span>
+    );
+  }
+  return (
+    <div className="flex h-full min-w-0 flex-1 items-center gap-[1.5vw]" role="timer" aria-label={`${seconds} segundos`}>
+      <span className={`${circle} h-full text-[7vh]`}>{seconds}</span>
+      <div className="h-[3.5vh] flex-1 overflow-hidden rounded-full bg-black/30">
+        <div
+          className={`h-full rounded-full transition-[width] duration-100 ease-linear ${urgent ? 'bg-bad' : 'bg-white'}`}
+          style={{ width: `${(remaining / (totalSec * 1000)) * 100}%` }}
+        />
+      </div>
+    </div>
   );
 }
 
 function TvSeriesEnd({ snap }: { snap: GameSnapshot }) {
   const end = snap.seriesEnd;
+  const entries = snap.leaderboard ?? [];
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-8">
+    <div className="flex flex-1 flex-col items-center justify-center gap-[3vh]">
       <div className="text-center">
         {end && (
-          <p className="text-2xl font-bold text-stage-soft xl:text-4xl">
+          <p className="text-[4vh] font-bold text-stage-soft">
             Fin de la Serie {end.series.index + 1}: {end.series.title}
           </p>
         )}
-        <h1 className="pill mt-3 px-10 py-3 text-4xl xl:text-6xl">
-          <TrophyFill className="size-9 text-gold xl:size-12" />
+        <h1 className="pill mt-[1.5vh] px-[3vw] py-[1vh] text-[7vh]">
+          <TrophyFill className="size-[7vh] text-gold" />
           Top 5
         </h1>
       </div>
-      <div className="w-full max-w-4xl [&_li]:xl:py-6 [&_li]:xl:text-4xl">
-        <Leaderboard entries={snap.leaderboard ?? []} />
-      </div>
+      <ol className="w-[min(88vw,150vh)] space-y-[1.6vh]">
+        {entries.map((e, i) => (
+          <li
+            key={e.playerId}
+            style={{ animationDelay: `${i * 90}ms` }}
+            className={`flex h-[12vh] animate-[slide-in_350ms_both] items-center gap-[1.5vw] rounded-[2vh] bg-white px-[2vw] text-[6vh] font-black text-ink shadow-3d ${
+              i === 0 ? 'ring-[0.7vh] ring-gold' : ''
+            }`}
+          >
+            <span className="flex w-[6vh] justify-center tabular-nums">
+              {e.rank === 1 ? <TrophyFill className="size-[6vh] text-gold" aria-label="1" /> : e.rank}
+            </span>
+            <span className="text-[7vh] leading-none" aria-hidden>
+              {e.avatar}
+            </span>
+            <span className="min-w-0 flex-1 truncate">{e.nickname}</span>
+            {e.delta !== 0 && (
+              <span className={`flex items-center text-[3vh] ${e.delta > 0 ? 'text-good' : 'text-bad'}`}>
+                {e.delta > 0 ? <CaretUpFill /> : <CaretDownFill />}
+                {Math.abs(e.delta)}
+              </span>
+            )}
+            <span className="tabular-nums">{e.score.toLocaleString('es')}</span>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
@@ -384,18 +457,18 @@ function TvSeriesEnd({ snap }: { snap: GameSnapshot }) {
 function TvWinner({ top }: { top: ScoreEntry[] }) {
   const winner = top[0];
   return (
-    <div className="flex flex-1 flex-col items-center justify-between gap-6">
+    <div className="flex flex-1 flex-col items-center justify-between gap-[2vh]">
       {winner && (
         <div className="animate-[podium-reveal_600ms_both] text-center [animation-delay:2.2s]">
-          <p className="pill text-3xl xl:text-5xl">
-            <TrophyFill className="size-9 text-gold xl:size-12" />
+          <p className="pill px-[2.5vw] py-[1vh] text-[6vh]">
+            <TrophyFill className="size-[6vh] text-gold" />
             ¡Ganador!
           </p>
-          <p className="mt-4 text-6xl font-black drop-shadow-lg xl:text-8xl">
+          <p className="mt-[1.5vh] text-[11vh] leading-none font-black drop-shadow-lg">
             <span aria-hidden>{winner.avatar} </span>
             {winner.nickname}
           </p>
-          <p className="mt-1 text-3xl font-bold text-stage-soft xl:text-4xl">{winner.score.toLocaleString('es')} puntos</p>
+          <p className="mt-[1vh] text-[4vh] font-bold text-stage-soft">{winner.score.toLocaleString('es')} puntos</p>
         </div>
       )}
       <Podium top={top} />
