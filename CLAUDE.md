@@ -124,7 +124,7 @@ CI (`.github/workflows/ci.yml`) ejecuta typecheck, tests, `prisma migrate deploy
   - Las variables del cliente están en **`.env.production`** (versionado, sin secretos): `VITE_SERVER_URL` (Render) y `VITE_PUBLIC_URL` (Vercel). Vite solo las lee al compilar para producción.
   - Netlify (`netlify.toml`) sigue configurado como respaldo.
 - **Render** (`render.yaml`) levanta el servidor (Socket.IO necesita un proceso siempre encendido, por eso no va en Vercel) y Postgres, con despliegue automático en cada push a `main`.
-- `pnpm start` aplica `prisma migrate deploy` antes de arrancar, así las migraciones salen con cada deploy.
+- `pnpm start` (en `server/`) hace `prisma generate && prisma migrate deploy && tsx src/index.ts`. El `generate` va aquí a propósito: con la caché de instalación de Render, pnpm ve las dependencias "al día", se salta el `postinstall` y el servidor caía con `ERR_MODULE_NOT_FOUND …/generated/prisma/client`. Las migraciones salen con cada deploy.
 - `CLIENT_ORIGIN` (`render.yaml`) debe incluir las URL de Vercel y Netlify.
 - `/api/health` devuelve el commit desplegado.
 
