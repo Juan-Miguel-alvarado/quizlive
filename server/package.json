@@ -12,7 +12,9 @@
     "test:load": "tsx scripts/load.ts",
     "test": "vitest run",
     "seed:biblia": "tsx scripts/seed-trivia.ts",
-    "images:biblia": "tsx scripts/add-images.ts"
+    "images:biblia": "tsx scripts/add-images.ts",
+    "db:respaldar": "tsx scripts/respaldo.ts respaldar",
+    "db:restaurar": "tsx scripts/respaldo.ts restaurar"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",

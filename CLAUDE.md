@@ -44,6 +44,8 @@ pnpm bots <PIN> [n]   # bots con avatar, nombre del dado y reacciones
 pnpm --filter server test:load 120 --finish   # carga (SERVER_URL=… para producción)
 pnpm --filter server seed:biblia              # carga la trivia "Día de la Biblia" por la API (no la duplica; `-- --actualizar` la reemplaza conservando las fotos)
 pnpm --filter server images:biblia            # le pone una foto (Unsplash) a cada pregunta; SERVER_URL=… para producción
+pnpm --filter server db:respaldar "URL"       # toda la base (trivias, fotos, historial) → respaldos/quizlive-AAAA-MM-DD.json
+pnpm --filter server db:restaurar respaldos/….json "URL"   # migra y restaura en una base vacía (mismos ids)
 pnpm --filter client build
 ```
 

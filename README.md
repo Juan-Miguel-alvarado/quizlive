@@ -112,6 +112,13 @@ pnpm --filter server seed:biblia    # opcional: carga la trivia «Día de la Bib
 pnpm --filter server images:biblia  # opcional: una foto para cada pregunta
 ```
 
+Copia de seguridad (sirve para cambiar de base de datos sin perder nada; no necesita `pg_dump`):
+
+```bash
+pnpm --filter server db:respaldar "postgresql://…"                       # → respaldos/quizlive-AAAA-MM-DD.json
+pnpm --filter server db:restaurar respaldos/quizlive-….json "postgresql://…"   # en una base vacía
+```
+
 | Qué | Dónde |
 |---|---|
 | Moderador | http://localhost:5173/host (clave: `HOST_PASSWORD`) |

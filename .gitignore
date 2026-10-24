@@ -7,3 +7,5 @@ server/src/generated
 .vercel
 .env.local
 .env*.local
+# Copias de la base (pnpm --filter server db:respaldar): tienen datos reales, no van al repo
+respaldos/

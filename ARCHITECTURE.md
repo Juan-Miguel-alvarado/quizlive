@@ -245,6 +245,9 @@ Las migraciones están en `server/prisma/migrations/` y se aplican solas al arra
 
 **Ojo con el plan gratis de Render:**
 - El servicio se duerme tras ~15 min sin uso y tarda cerca de un minuto en despertar.
-- La base de datos gratis caduca a los 30 días.
+- La base de datos gratis caduca a los 30 días. Desde ese momento hay 14 días para pasarla a un plan de pago;
+  si no, Render la borra con todo (trivias, fotos e historial).
+- `pnpm --filter server db:respaldar` / `db:restaurar` (`server/scripts/respaldo.ts`) copian la base entera a un
+  JSON y de vuelta a cualquier Postgres vacío, conservando los ids.
 
 La [guía del anfitrión](docs/GUIA-ANFITRION.md) explica cómo prepararse.
