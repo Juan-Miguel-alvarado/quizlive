@@ -35,9 +35,8 @@ Se usan **tres pantallas**:
       ```bash
       SERVER_URL=https://quizlivee-server.onrender.com pnpm --filter server test:load 120 --finish
       ```
-- [ ] Con el plan gratis de Render, revisa en su panel que la **base de datos no haya caducado** (las
-      gratis duran 30 días; al vencer quedan 14 días para pasarla a un plan de pago antes de que se borre).
-- [ ] Haz una copia de seguridad: `pnpm --filter server db:respaldar "URL externa de la base"`.
+- [ ] Haz una copia de seguridad de la base (trivias, fotos e historial):
+      `pnpm --filter server db:respaldar "URL de Neon"`.
 - [ ] Imprime o comparte la hoja [Cómo jugar](COMO-JUGAR.md) si crees que ayudará a los mayores.
 
 ## El mismo día, 15 minutos antes

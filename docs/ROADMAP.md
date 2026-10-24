@@ -14,9 +14,8 @@ Toca `Game` (equipo por jugador y ranking por equipo), `playerJoinSchema` (campo
 `team`), el editor de la trivia o la pantalla de abrir sala, y `Leaderboard`/`Podium`.
 
 ## Servidor que no se duerma
-El plan gratis de Render duerme el servidor y su Postgres gratis caduca a los 30 días. Para uso
-semanal conviene el plan *Starter* del servicio web y una base de datos de pago (o Neon/Supabase gratis
-con `DATABASE_URL` apuntando allí).
+El plan gratis de Render duerme el servidor. Para uso semanal conviene su plan *Starter*. (La base de
+datos ya está en Neon gratis, que no caduca).
 
 ## Avance automático
 Opción "modo automático": revelar, mostrar la clasificación y pasar a la siguiente pregunta sin tocar

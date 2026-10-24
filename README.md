@@ -157,7 +157,8 @@ Más detalle en [ARCHITECTURE.md](ARCHITECTURE.md).
 | Parte | Dónde | Notas |
 |---|---|---|
 | Frontend | **Vercel** (`vercel.json`) | Las variables están en `.env.production`: `VITE_SERVER_URL` y `VITE_PUBLIC_URL`. Netlify (`netlify.toml`) queda de respaldo. |
-| Servidor y Postgres | **Render** (`render.yaml`) | Socket.IO necesita un proceso siempre encendido. Variables: `DATABASE_URL`, `CLIENT_ORIGIN`, `HOST_PASSWORD`, `SESSION_SECRET`. |
+| Servidor | **Render** (`render.yaml`) | Socket.IO necesita un proceso siempre encendido. Variables: `DATABASE_URL`, `CLIENT_ORIGIN`, `HOST_PASSWORD`, `SESSION_SECRET`. |
+| Postgres | **Neon** (gratis, no caduca) | Su URL va en `DATABASE_URL`, en el panel de Render. |
 
 Cada push a `main` despliega los dos solos. `pnpm start` aplica las migraciones antes de arrancar, y
 `/api/health` dice qué commit está en línea.

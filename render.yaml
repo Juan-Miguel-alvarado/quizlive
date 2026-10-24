@@ -1,4 +1,6 @@
-# Blueprint de Render: backend (Express + Socket.IO) + Postgres.
+# Blueprint de Render: backend (Express + Socket.IO).
+# La base de datos NO está en Render: su Postgres gratis caduca a los 30 días y se borra. Va en Neon
+# (plan gratis, no caduca) y su URL se escribe a mano en el panel (DATABASE_URL).
 # Render → New → Blueprint → elegir este repo → Apply.
 services:
   - type: web
@@ -12,10 +14,9 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "24"
+      # URL de Neon sin «connection pooling» (las migraciones del arranque la necesitan directa).
       - key: DATABASE_URL
-        fromDatabase:
-          name: quizlivee-db
-          property: connectionString
+        sync: false
       # La clave de anfitrión se escribe en el panel de Render (no vive en el repo).
       - key: HOST_PASSWORD
         sync: false
@@ -24,9 +25,3 @@ services:
       - key: CLIENT_ORIGIN
         # Vercel (el link que usa la gente) y Netlify (el anterior, por si alguien tiene el link viejo)
         value: https://quizlivee.vercel.app,https://quizlivee.netlify.app,http://localhost:5173
-
-databases:
-  - name: quizlivee-db
-    plan: free
-    databaseName: quiz
-    user: quiz

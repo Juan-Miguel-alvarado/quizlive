@@ -21,7 +21,7 @@ guías de [`docs/`](docs/).
                └──────────┬───────────┘
                           │ Prisma
                ┌──────────▼───────────┐
-               │      PostgreSQL      │  quizzes, preguntas, imágenes, historial
+               │      PostgreSQL      │  quizzes, preguntas, imágenes, historial    Neon (gratis)
                └──────────────────────┘
 ```
 
@@ -239,14 +239,15 @@ Las migraciones están en `server/prisma/migrations/` y se aplican solas al arra
 |---|---|---|
 | Frontend | **Vercel** (quizlivee.vercel.app) | `vercel.json`: instala con pnpm, `pnpm --filter client build`, publica `client/dist` y reescribe las rutas a `index.html` (SPA). Las variables del cliente (`VITE_SERVER_URL`, `VITE_PUBLIC_URL`) están en `.env.production`, versionado y sin secretos. |
 | Frontend (respaldo) | Netlify (quizlivee.netlify.app) | `netlify.toml`. Su QR también apunta a Vercel. |
-| Backend + Postgres | Render | `render.yaml` (blueprint). Despliegue automático en cada push a `main`. `CLIENT_ORIGIN` incluye las URL de Vercel y Netlify. Socket.IO necesita un proceso siempre encendido, así que no puede ir en Vercel. |
+| Backend | Render | `render.yaml` (blueprint). Despliegue automático en cada push a `main`. `CLIENT_ORIGIN` incluye las URL de Vercel y Netlify. Socket.IO necesita un proceso siempre encendido, así que no puede ir en Vercel. |
+| Postgres | Neon (plan gratis) | `DATABASE_URL` en el panel de Render (`sync: false`), sin «connection pooling». No caduca; tras unos minutos sin uso se suspende y despierta sola en la primera consulta. |
 
 `GET /api/health` responde `{ ok, commit }` para saber qué versión está desplegada.
 
 **Ojo con el plan gratis de Render:**
 - El servicio se duerme tras ~15 min sin uso y tarda cerca de un minuto en despertar.
-- La base de datos gratis caduca a los 30 días. Desde ese momento hay 14 días para pasarla a un plan de pago;
-  si no, Render la borra con todo (trivias, fotos e historial).
+- Su Postgres gratis caduca a los 30 días y, 14 días después, se borra con todo. Así se perdió la primera
+  base (octubre de 2026): por eso Postgres va en Neon.
 - `pnpm --filter server db:respaldar` / `db:restaurar` (`server/scripts/respaldo.ts`) copian la base entera a un
   JSON y de vuelta a cualquier Postgres vacío, conservando los ids.
 
