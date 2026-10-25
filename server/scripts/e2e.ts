@@ -2,7 +2,7 @@
  * Prueba de humo de una partida completa contra un servidor en marcha (pnpm dev).
  * Uso: pnpm --filter server test:e2e
  */
-import type { ClientToServerEvents, GameSnapshot, ServerToClientEvents } from '@quiz/shared';
+import { QUESTION_COUNTDOWN_SEC, type ClientToServerEvents, type GameSnapshot, type ServerToClientEvents } from '@quiz/shared';
 import { io, type Socket } from 'socket.io-client';
 
 type ClientSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -139,7 +139,7 @@ async function playGame(pin: string, hostToken: string) {
   const countdown1 = await cd;
   check(countdown1.index === 0 && countdown1.series.title === 'Serie uno' && countdown1.series.total === 2, 'la cuenta muestra la serie (la vacía no cuenta)');
   const question = await q1;
-  check(Date.now() - tStart >= 4500, 'la pregunta aparece al terminar la cuenta regresiva');
+  check(Date.now() - tStart >= QUESTION_COUNTDOWN_SEC * 1000 - 500, 'la pregunta aparece al terminar la cuenta regresiva');
   check(!('correctIndices' in question), 'la pregunta NO incluye la respuesta correcta');
   check(!(await emit(p1, 'player:answer', { questionIndex: 0, choices: [9] })).ok, 'opción fuera de rango rechazada');
   check(!(await emit(p1, 'player:answer', { questionIndex: 0, choices: [0, 1] })).ok, 'opción única no acepta varias');
