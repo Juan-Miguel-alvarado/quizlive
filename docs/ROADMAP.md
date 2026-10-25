@@ -2,7 +2,8 @@
 
 Cosas que se pensaron y quedaron fuera, ordenadas de más a menos útil para el uso en la iglesia.
 
-Del spec de la trivia (v2) ya están hechos: el QR en la TV, la música y las animaciones. Quedan:
+Del spec de la trivia (v2) ya están hechos la música y las animaciones (el QR en la TV se hizo y luego se
+quitó a pedido, para que solo entre el grupo elegido). Quedan:
 imágenes en las opciones, importar directo desde Word/Excel (hoy se pega el texto), exportar resultados
 y varias partidas en paralelo (técnicamente ya se puede: cada partida tiene su PIN).
 

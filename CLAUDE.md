@@ -90,17 +90,18 @@ CI (`.github/workflows/ci.yml`) ejecuta typecheck, tests, `prisma migrate deploy
 - **Límites por IP del PIN:** solo cuentan los **fallos** (`createRateLimiter().blocked()` + `take()` cuando el PIN no existe). Con datos móviles hay CGNAT y cientos de celulares comparten IP: **nunca** limites por petición en rutas que usan los jugadores (`GET /api/games/:pin`, `player:join`, `GET /api/images/:id`).
 - **Campos nuevos en `player:join`** deben ser opcionales con un valor por defecto en el servidor (como `avatar`). Los scripts `bots.ts`, `e2e.ts` y `load.ts` no los envían.
 - **Apodos repetidos:** no se rechazan, se numeran (`Game.uniqueNickname`: "Ana" → "Ana 2", máximo 20 caracteres).
-- **Reacciones:** solo en `lobby`, `leaderboard` y `podium`; una cada 1,5 s por jugador. En el proyector (`components/Reactions.tsx`) suben en burbujas grandes **por los bordes** (como mucho 3 por emoji y envío, con "×N"), y en el lobby solo por la derecha para no tapar el QR.
+- **Reacciones:** solo en `lobby`, `leaderboard` y `podium`; una cada 1,5 s por jugador. En el proyector (`components/Reactions.tsx`) suben en burbujas grandes **por los bordes** (como mucho 3 por emoji y envío, con "×N"), y en el lobby solo por la derecha.
 - **Explicación/versículo:** `Question.explanation` (opcional, ≤300 caracteres). Va en `RevealView.explanation`. En el CSV es la 9.ª columna; los CSV de 8 columnas siguen siendo válidos. Al añadir campos a `Question`, actualiza también los `select` de `routes/quizzes.ts`, `routes/games.ts` y `routes/history.ts` (quiz de repaso).
 - **Avatares:** son un enum cerrado (`AVATARS` en `shared/src/schemas.ts`). Los nombres del dado (`shared/src/names.ts`) usan adjetivos que valen para masculino y femenino.
 - **Tamaño de letra:** en el celular (`max-width: 40rem`) el texto base es 112,5 %. El proyector no se escala. Usa unidades `rem`. El botón "Letra" se quitó a pedido del usuario (no se entendía): no lo vuelvas a añadir.
 - **Rutas del cliente:**
-  - `/:pin` (solo 6 dígitos) es la entrada corta que lleva el QR.
+  - `/:pin` (solo 6 dígitos) es la entrada corta: el link que comparte el moderador.
   - `/tv/:pin` es la TV (`pages/tv/TvScreen.tsx`) y `/host/game/:pin` el moderador (`pages/host/Moderator.tsx`).
   - Las pantallas `/host/*` y `/tv` se cargan con `lazy` para que los jugadores descarguen menos.
 - **Pantalla TV:**
   - Sin botones durante el juego: solo en el lobby salen pantalla completa, música y efectos. También funcionan el doble clic y la tecla F, y el cursor se oculta solo.
   - Todo lo más grande posible: medidas en `vh`/`vw` y `components/FitText.tsx`, que busca el mayor tamaño de letra que cabe en su caja (pregunta, opciones, versículo, PIN…).
+  - **Sin QR:** se quitó a pedido del usuario, para que solo entre el grupo elegido (con el PIN o el link que comparte el moderador). No lo vuelvas a añadir.
   - Con imagen, el contador va a la izquierda y la foto ocupa el resto; la TV **no** muestra cuántos respondieron (a pedido del usuario; el moderador sí).
 - **Pegado rápido** (`shared/src/paste.ts`):
   - `parsePastedQuestion` recibe 5 líneas (pregunta y 4 opciones) o 4 (solo las opciones).
@@ -117,7 +118,7 @@ CI (`.github/workflows/ci.yml`) ejecuta typecheck, tests, `prisma migrate deploy
 - **Música:** `lib/music.ts` reproduce `client/public/music/fondo.mp3`, la canción que eligió el usuario (no vuelvas a la música sintetizada). Solo suena en la **TV** y comparte el `AudioContext` con `sound.ts` (`getAudioContext()`). `TvScreen` decide por fase: suena en `lobby` y `question`; en las demás se pausa y luego sigue por donde iba. El moderador no suena.
 - **Margen de reacciones:** el lobby de la TV reserva 7,5 rem a cada lado (`max-w-[min(90rem,calc(100%-15rem))]`) para las burbujas de reacciones; no lo quites.
 - **Iconos:** usa Bootstrap Icons (`react-bootstrap-icons`) para todo lo que sea interfaz (botones, estados, flechas). Los emojis quedan solo para avatares y reacciones. No uses símbolos unicode como ▸ ✓ ✕.
-- **Dirección pública:** los jugadores entran por **quizlivee.vercel.app**. Netlify (quizlivee.netlify.app) sigue como respaldo y su QR también apunta a Vercel. El QR y el link usan `PUBLIC_URL` (`lib/api.ts`) = `VITE_PUBLIC_URL`; en desarrollo, la propia página.
+- **Dirección pública:** los jugadores entran por **quizlivee.vercel.app**. Netlify (quizlivee.netlify.app) sigue como respaldo y también anuncia Vercel. El link usa `PUBLIC_URL` (`lib/api.ts`) = `VITE_PUBLIC_URL`; en desarrollo, la propia página.
 - **Palabras:** en la interfaz se dice **trivia** (no "quiz"), **moderador** y **participantes**. En el código, los modelos siguen llamándose `Quiz`.
 - **Render gratis** se duerme: `useServerWakeup` y `WakingBanner` avisan en `Home` y `HostGate`.
 

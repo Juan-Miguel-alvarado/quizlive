@@ -13,7 +13,7 @@ import { useServerWakeup } from '../lib/useServerWakeup';
 export default function Home() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  // El PIN puede venir en la ruta corta (/482913, la del QR) o como ?pin= (enlaces viejos).
+  // El PIN puede venir en la ruta corta (/482913, la del link compartido) o como ?pin= (enlaces viejos).
   const initialPin = useParams().pin ?? params.get('pin');
   const [pin, setPin] = useState(initialPin ?? '');
   const [quizTitle, setQuizTitle] = useState<string | null>(null);
@@ -27,7 +27,7 @@ export default function Home() {
   const [previous] = useState(playerSession.get);
   const waking = useServerWakeup();
 
-  // Si se llegó escaneando el QR, se valida el PIN solo y se pasa directo al nombre.
+  // Si se llegó por el link corto, se valida el PIN solo y se pasa directo al nombre.
   const autoChecked = useRef(false);
   useEffect(() => {
     if (autoChecked.current || !initialPin) return;

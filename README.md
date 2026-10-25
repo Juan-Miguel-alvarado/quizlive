@@ -15,12 +15,12 @@ Hay **tres pantallas sincronizadas**:
 
 | Pantalla | Dirección | Para qué |
 |---|---|---|
-| **TV** | `quizlivee.vercel.app/tv/PIN` | Lo que ve el público: QR, pregunta, tiempo, respuesta, top 5 y ganador. No tiene botones. |
+| **TV** | `quizlivee.vercel.app/tv/PIN` | Lo que ve el público: PIN, pregunta, tiempo, respuesta, top 5 y ganador. No tiene botones. |
 | **Moderador** | `quizlivee.vercel.app/host` | Desde el celular: abre la sala, comparte el link y da «Siguiente». También sirve para preparar las trivias. |
 | **Participantes** | `quizlivee.vercel.app` | Entran con el link o el PIN, eligen un dibujo y un nombre, y responden. |
 
 1. El moderador abre la sala y pone la pantalla TV en el televisor.
-2. La gente escanea el QR (o escribe el PIN) y elige su dibujo y su nombre.
+2. La gente escribe el PIN (o abre el link que comparte el moderador) y elige su dibujo y su nombre.
 3. Las preguntas van por **series**. Al final de cada serie sale el **top 5**, y al final del juego, el **ganador**.
 
 ## Capturas
@@ -29,7 +29,7 @@ Hay **tres pantallas sincronizadas**:
 
 | Sala de espera | Inicio de serie |
 |---|---|
-| ![Lobby con el PIN, el QR y los jugadores](docs/img/tv-lobby.jpg) | ![Inicio de la serie «Expertos en Génesis»](docs/img/tv-serie.jpg) |
+| ![Lobby con el PIN y los jugadores](docs/img/tv-lobby.jpg) | ![Inicio de la serie «Expertos en Génesis»](docs/img/tv-serie.jpg) |
 | **Respuesta y versículo** | **Top 5 al terminar la serie** |
 | ![Revelación con la respuesta correcta en verde y el versículo](docs/img/tv-revelar.jpg) | ![Top 5 de la serie](docs/img/tv-top5.jpg) |
 
@@ -52,7 +52,7 @@ Hay **tres pantallas sincronizadas**:
 ## Lo que trae
 
 - **Entrada rápida para 100 personas:**
-  - El QR lleva directo a elegir el nombre.
+  - El link que comparte el moderador lleva directo a elegir el nombre.
   - El PIN se busca solo al escribir el 6.º número.
   - Hay un dado (🎲) que inventa un nombre.
   - Los nombres repetidos se numeran en lugar de dar error.

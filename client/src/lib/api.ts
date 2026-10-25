@@ -13,7 +13,7 @@ import { hostSession } from './session';
 export const SERVER_URL = import.meta.env.VITE_SERVER_URL || '';
 
 /**
- * Dirección que se anuncia a los jugadores (QR y enlace corto del lobby). En Netlify es
+ * Dirección que se anuncia a los jugadores (enlace corto del lobby). En Netlify es
  * https://quizlivee.netlify.app; en desarrollo, la de la propia página (los celulares deben
  * llegar al mismo servidor local).
  */

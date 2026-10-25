@@ -14,7 +14,7 @@ import type {
 export type GamePhase = 'lobby' | 'countdown' | 'question' | 'reveal' | 'leaderboard' | 'podium';
 
 /** Segundos de "¡Prepárate!" antes de mostrar cada pregunta. */
-export const QUESTION_COUNTDOWN_SEC = 5;
+export const QUESTION_COUNTDOWN_SEC = 3;
 
 /** Serie actual: "Serie 2 de 4 · ¿Quién dijo?". */
 export interface SeriesInfo {

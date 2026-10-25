@@ -1,5 +1,4 @@
 import { QUESTION_COUNTDOWN_SEC, type GameSnapshot, type ScoreEntry } from '@quiz/shared';
-import { QRCodeSVG } from 'qrcode.react';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowsFullscreen,
@@ -164,7 +163,6 @@ function useIdleCursor() {
 }
 
 function TvLobby({ snap }: { snap: GameSnapshot }) {
-  const joinUrl = `${PUBLIC_URL}/${snap.pin}`;
   const joinHost = new URL(PUBLIC_URL).host;
   // Solo si lo que se anuncia es localhost (en desarrollo, sin VITE_PUBLIC_URL).
   const isLocalhost = /^(localhost|127\.0\.0\.1)(:|$)/.test(joinHost);
@@ -195,7 +193,6 @@ function TvLobby({ snap }: { snap: GameSnapshot }) {
             {snap.pin.slice(0, 3)} {snap.pin.slice(3)}
           </p>
         </div>
-        <QRCodeSVG value={joinUrl} marginSize={1} fgColor="#1f1f1f" className="size-[28vh] shrink-0" />
       </section>
 
       <div className="flex items-center justify-between gap-[2vw]">

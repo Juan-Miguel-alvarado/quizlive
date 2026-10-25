@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../lib/prisma', () => ({ prisma: { quiz: { count: vi.fn(async () => 1) }, game: { create: vi.fn(async () => ({})) } } }));
 
 const { Game, GameError } = await import('./Game');
+const { QUESTION_COUNTDOWN_SEC } = await import('@quiz/shared');
 type GameType = InstanceType<typeof Game>;
 
 interface Emitted {
@@ -63,7 +64,7 @@ describe('Game', () => {
   };
   const startQuestion = () => {
     game.next(); // lobby → cuenta regresiva
-    vi.advanceTimersByTime(5000); // termina la cuenta regresiva
+    vi.advanceTimersByTime(QUESTION_COUNTDOWN_SEC * 1000); // termina la cuenta regresiva
   };
   const lastEvent = (event: string) => [...io.emitted].reverse().find((e) => e.event === event)?.payload as never;
 
@@ -156,7 +157,7 @@ describe('Game', () => {
     startQuestion();
     game.answer(ana.playerId, 0, [0]);
     game.next(); // revelación → cuenta regresiva de la pregunta 2 (misma serie: sin tabla)
-    vi.advanceTimersByTime(5000);
+    vi.advanceTimersByTime(QUESTION_COUNTDOWN_SEC * 1000);
     game.answer(ana.playerId, 1, [1]);
 
     const result = lastEvent('player:result') as { streak: number; points: number; totalScore: number };
@@ -168,14 +169,14 @@ describe('Game', () => {
   it('muestra la tabla solo al terminar cada serie y el ganador al final', () => {
     const ana = addPlayer('Ana');
     game.start();
-    vi.advanceTimersByTime(5000);
+    vi.advanceTimersByTime(QUESTION_COUNTDOWN_SEC * 1000);
     expect(lastEvent('question:start')).toMatchObject({ series: { index: 0, total: 2, title: 'Génesis' }, inSeries: { index: 0, total: 2 } });
     game.answer(ana.playerId, 0, [0]);
     expect(lastEvent('question:reveal')).toMatchObject({ endsSeries: false });
 
     game.next(); // P1 no termina la serie: va directo a la cuenta de P2
     expect(game.phase).toBe('countdown');
-    vi.advanceTimersByTime(5000);
+    vi.advanceTimersByTime(QUESTION_COUNTDOWN_SEC * 1000);
     game.answer(ana.playerId, 1, [1]);
     expect(lastEvent('question:reveal')).toMatchObject({ endsSeries: true });
 
@@ -189,7 +190,7 @@ describe('Game', () => {
 
     game.next(); // "Iniciar Serie 2"
     expect(lastEvent('question:countdown')).toMatchObject({ series: { index: 1, title: '¿Quién dijo?' }, inSeries: { index: 0, total: 1 } });
-    vi.advanceTimersByTime(5000);
+    vi.advanceTimersByTime(QUESTION_COUNTDOWN_SEC * 1000);
     game.answer(ana.playerId, 2, [0, 2]);
     game.next(); // última de la última serie: tabla final
     expect(lastEvent('game:leaderboard')).toMatchObject({ seriesEnd: { isLast: true } });
@@ -214,7 +215,7 @@ describe('Game', () => {
     game.answer(ana.playerId, 0, [0]);
     const caro = addPlayer('Caro'); // entra en la revelación de P1
     game.next();
-    vi.advanceTimersByTime(5000);
+    vi.advanceTimersByTime(QUESTION_COUNTDOWN_SEC * 1000);
     game.answer(ana.playerId, 1, [1]);
     game.answer(caro.playerId, 1, [1]);
     const ranking = game.snapshot(null);
@@ -233,11 +234,11 @@ describe('Game', () => {
     startQuestion(); // P1
     vi.advanceTimersByTime(10000);
     game.next(); // → cuenta de P2
-    vi.advanceTimersByTime(5000);
+    vi.advanceTimersByTime(QUESTION_COUNTDOWN_SEC * 1000);
     vi.advanceTimersByTime(10000);
     game.next(); // fin de serie → tabla
     game.next(); // → cuenta de P3
-    vi.advanceTimersByTime(5000);
+    vi.advanceTimersByTime(QUESTION_COUNTDOWN_SEC * 1000);
     game.answer(ana.playerId, 2, [2, 0]); // las dos correctas, en otro orden
     game.answer(beto.playerId, 2, [0]); // solo una
     vi.advanceTimersByTime(10000);
@@ -283,7 +284,7 @@ describe('Game', () => {
   it('vuelve a empezar con los mismos jugadores y el puntaje en cero', () => {
     const ana = addPlayer('Ana');
     game.start();
-    vi.advanceTimersByTime(5000);
+    vi.advanceTimersByTime(QUESTION_COUNTDOWN_SEC * 1000);
     game.answer(ana.playerId, 0, [0]);
     vi.advanceTimersByTime(10000);
     game.end(); // termina la partida → podio

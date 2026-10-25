@@ -42,7 +42,7 @@ Las preguntas se agrupan en **series** (por ejemplo "¿Quién dijo?"). `GameQuiz
 cada una con su `seriesIndex`, y sin las series vacías.
 
 ```
-lobby ──start──▶ countdown ──5 s──▶ question ──tiempo / todos respondieron──▶ reveal
+lobby ──start──▶ countdown ──3 s──▶ question ──tiempo / todos respondieron──▶ reveal
                      ▲   ▲                                                      │ next
                      │   └──────── (quedan preguntas en la serie) ──────────────┤
                      │                                                          │ (era la última de la serie)
@@ -120,7 +120,7 @@ Salas de Socket.IO: `game:<pin>` (todos) y `game:<pin>:host` (el moderador y las
 - **Los celulares no reciben la lista de jugadores** (serían 100 × 100 mensajes).
 - **Reacciones:** una por jugador cada 1,5 s y solo en lobby, clasificación y podio. Durante la pregunta
   taparían lo importante. En el proyector suben en burbujas grandes por los bordes (como mucho 3 por emoji en cada
-  envío, con "×N"), nunca encima del QR.
+  envío, con "×N").
 - **Imágenes:** caché en memoria de las últimas 40, porque al aparecer una pregunta con imagen la piden
   100 celulares a la vez.
 - **Prueba de carga:** `pnpm --filter server test:load 120 --finish`. En local entran 120 jugadores en
@@ -142,9 +142,9 @@ Cualquier cliente puede entrar en **cualquier fase** porque recibe una foto comp
 
 ## Entrada rápida (lo que hace que 100 personas entren en un minuto)
 
-1. **QR con la ruta corta** `quizlivee.vercel.app/482913`, que salta directo al paso del nombre. La TV
-   muestra, como Kahoot, el dominio y el PIN en grande. El moderador puede **compartir el link por
-   WhatsApp** (`navigator.share`, o `wa.me` si no está disponible).
+1. **Ruta corta** `quizlivee.vercel.app/482913`, que salta directo al paso del nombre. La TV muestra el
+   dominio y el PIN en grande, **sin QR** (se quitó a pedido: solo entra el grupo elegido). El moderador
+   puede **compartir el link por WhatsApp** (`navigator.share`, o `wa.me` si no está disponible).
    La dirección sale de `PUBLIC_URL` (`client/src/lib/api.ts`): `VITE_PUBLIC_URL` en producción
    (`.env.production`), o la de la propia página en desarrollo.
 2. **El PIN se valida solo** al escribir el 6.º dígito, con teclado numérico (`inputMode="numeric"`).
@@ -238,7 +238,7 @@ Las migraciones están en `server/prisma/migrations/` y se aplican solas al arra
 | Pieza | Dónde | Configuración |
 |---|---|---|
 | Frontend | **Vercel** (quizlivee.vercel.app) | `vercel.json`: instala con pnpm, `pnpm --filter client build`, publica `client/dist` y reescribe las rutas a `index.html` (SPA). Las variables del cliente (`VITE_SERVER_URL`, `VITE_PUBLIC_URL`) están en `.env.production`, versionado y sin secretos. |
-| Frontend (respaldo) | Netlify (quizlivee.netlify.app) | `netlify.toml`. Su QR también apunta a Vercel. |
+| Frontend (respaldo) | Netlify (quizlivee.netlify.app) | `netlify.toml`. También anuncia la dirección de Vercel. |
 | Backend | Render | `render.yaml` (blueprint). Despliegue automático en cada push a `main`. `CLIENT_ORIGIN` incluye las URL de Vercel y Netlify. Socket.IO necesita un proceso siempre encendido, así que no puede ir en Vercel. |
 | Postgres | Neon (plan gratis) | `DATABASE_URL` en el panel de Render (`sync: false`), sin «connection pooling». No caduca; tras unos minutos sin uso se suspende y despierta sola en la primera consulta. |
 

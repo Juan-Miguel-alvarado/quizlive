@@ -50,8 +50,8 @@ Se usan **tres pantallas**:
    - **Sonido:** haz **un clic** en la TV. El navegador no deja sonar nada hasta entonces. La música suena
      en el lobby y durante cada pregunta. Los botones de música y efectos
      solo se ven en el lobby.
-4. **Comparte el link** con **«Compartir link»** (abre WhatsApp u otra app). También pueden escanear el
-   QR de la TV.
+4. **Comparte el link** con **«Compartir link»** (abre WhatsApp u otra app). También pueden escribir
+   el PIN que sale en la TV.
 
 ## Mientras la gente entra
 
@@ -68,7 +68,7 @@ Tu panel tiene **un botón grande** que cambia según el momento:
 
 | En pantalla | Tu botón | Qué pasa |
 |---|---|---|
-| «Serie 1 de 4: Expertos en Génesis» / «¡Prepárate!» | **Mostrar ya** | Salta la cuenta de 5 segundos. |
+| «Serie 1 de 4: Expertos en Génesis» / «¡Prepárate!» | **Mostrar ya** | Salta la cuenta de 3 segundos. |
 | La pregunta, con el tiempo | **Cerrar pregunta ya** (pequeño) | Se cierra sola al acabarse el tiempo o cuando respondieron todos. |
 | La respuesta correcta en verde | **Siguiente pregunta** | Pasa a la siguiente de la misma serie. |
 | La última respuesta de la serie | **Ver tabla** | La TV y los celulares muestran el **top 5**; cada uno ve también su puesto. |
@@ -85,7 +85,7 @@ Tu panel tiene **un botón grande** que cambia según el momento:
 | Problema | Solución |
 |---|---|
 | «No carga» en los celulares al principio | El servidor estaba dormido: espera un minuto y que recarguen. |
-| A alguien le dice «Demasiados intentos» | Escribió mal el PIN muchas veces. Que espere unos minutos o, mejor, que use el link o el QR. |
+| A alguien le dice «Demasiados intentos» | Escribió mal el PIN muchas veces. Que espere unos minutos o, mejor, que use el link. |
 | Un celular dice «Sin conexión, reconectando…» | Se reconecta solo. Si no, que recargue: vuelve con su nombre y sus puntos. Las preguntas que se perdió cuentan 0. |
 | Se cerró la TV o el computador se reinició | Vuelve a abrir el link de la TV: se pone al día sola. |
 | Se te bloqueó o apagó el celular | Desbloquéalo: el panel se reconecta solo. Si cerraste la pestaña, vuelve a abrir el panel **en el mismo celular** (está en el historial del navegador: `…/host/game/PIN`). La partida te espera hasta 30 minutos. |

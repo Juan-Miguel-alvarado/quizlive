@@ -5,7 +5,7 @@ import './index.css';
 import Home from './pages/Home';
 import PlayerGame from './pages/play/PlayerGame';
 
-/** Ruta corta para unirse (/482913): es la que lleva el QR y la más fácil de dictar. */
+/** Ruta corta para unirse (/482913): es la del link que comparte el moderador y la más fácil de dictar. */
 function JoinByPin() {
   const { pin = '' } = useParams();
   return /^\d{6}$/.test(pin) ? <Home key={pin} /> : <Navigate to="/" replace />;

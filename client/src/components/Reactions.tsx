@@ -18,7 +18,7 @@ const MAX_PER_EMOJI_BATCH = 3; // 80 aplausos a la vez: 3 burbujas grandes con "
 
 /**
  * Capa del proyector: las reacciones de los jugadores suben flotando en burbujas grandes por los
- * bordes de la pantalla. `rightOnly` las aparta del QR del lobby, que tiene que poder escanearse.
+ * bordes de la pantalla. `rightOnly` las deja solo a la derecha (en el lobby).
  */
 export function Reactions({ rightOnly = false }: { rightOnly?: boolean }) {
   const [items, setItems] = useState<Floating[]>([]);
@@ -36,7 +36,7 @@ export function Reactions({ rightOnly = false }: { rightOnly?: boolean }) {
             id: nextId.current++,
             emoji,
             count: i === 0 ? count : 1, // el total va solo en la primera burbuja
-            // Solo por los bordes: el centro es para el QR, los nombres y el podio.
+            // Solo por los bordes: el centro es para el PIN, los nombres y el podio.
             side: rightOnlyRef.current || Math.random() < 0.5 ? 'right' : 'left',
             // Las burbujas caben en el margen libre a los lados del contenido (el lobby reserva 7,5rem).
             offset: 0.3 + Math.random() * 1.2,
